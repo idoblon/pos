@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -26,7 +27,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/super-admin/**")
                         .hasRole("ADMIN")
                         .anyRequest().permitAll()
-                ).addFilterBefore(new JwtValidator(). BasicAuthenticationFilter.class
+                ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class
                 ).csrf(AbstractHttpConfigurer::disable)
                 .cors(
                         cors -> cors.configurationSource(corsConfigurationSource())
