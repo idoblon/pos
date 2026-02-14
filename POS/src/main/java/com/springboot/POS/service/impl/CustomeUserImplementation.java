@@ -1,4 +1,4 @@
-package com.springboot.POS.configuration;
+package com.springboot.POS.service.impl;
 
 import com.springboot.POS.modal.User;
 import com.springboot.POS.repository.UserRepository;
@@ -33,7 +33,8 @@ public class CustomeUserImplementation implements UserDetailsService {
         Collection<GrantedAuthority> authorities =
                 Collections.singleton(authority);
 
-
-        return user;
+        return new org.springframework.security.core.userdetails.User(
+                user.getEmail(),user.getPassword(), authorities
+        );
     }
 }
