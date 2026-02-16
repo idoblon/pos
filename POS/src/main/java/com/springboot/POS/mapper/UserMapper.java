@@ -4,7 +4,7 @@ import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.UserDto;
 
 public class UserMapper {
-    public static UserDto toDto(User savedUser) {
+    public static UserDto toDTO(User savedUser) {
         UserDto userDto = new UserDto();
         userDto.setId(savedUser.getId());
         userDto.setFullName(savedUser.getFullName());
