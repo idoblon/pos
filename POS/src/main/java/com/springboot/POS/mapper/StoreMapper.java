@@ -25,7 +25,7 @@ public class StoreMapper {
         store.setId(storeDTO.getId());
         store.setBrand(storeDTO.getBrand());
         store.setDescription(storeDTO.getDescription());
-        store.setStoreAdmin(storeAdmin());
+        store.setStoreAdmin(storeAdmin);
         storeDTO.setStoreType(store.getStoreType());
         storeDTO.setCreatedAt(store.getCreatedAt());
         storeDTO.setUpdatedAt(store.getUpdatedAt());

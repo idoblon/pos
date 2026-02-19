@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/store")
+@RequestMapping("/api/stores")
 public class StoreController {
 
     private final StoreService storeService;
@@ -29,13 +29,6 @@ public class StoreController {
                                                 @RequestHeader("Authorization") String jwt) throws UserException {
         User user = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(storeService.createStore(storeDTO, user));
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id,
-                                                 @RequestHeader("Authorization") String jwt) throws Exception {
-        User user = userService.getUserFromJwtToken(jwt);
-        return ResponseEntity.ok(storeService.getStoreById(id));
     }
 
     @GetMapping
@@ -81,6 +74,13 @@ public class StoreController {
                                                   @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(storeService.moderateStore(id, status));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id,
+                                                 @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        return ResponseEntity.ok(storeService.getStoreById(id));
     }
 
     @DeleteMapping("/{id}")
