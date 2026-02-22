@@ -1,14 +1,12 @@
 package com.springboot.POS.payload.dto;
 
-import com.springboot.POS.modal.Store;
-import jakarta.persistence.Column;
-import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,14 +15,13 @@ public class ProductDTO {
 
     private Long id;
 
-
     private String name;
 
     private String sku;
 
     private String desciption;
 
-    private  Double mrp;
+    private Double mrp;
 
     private Double sellingPrice;
 

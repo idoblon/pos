@@ -1,6 +1,5 @@
 package com.springboot.POS.modal;
 
-import com.springboot.POS.domain.StoreStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +24,7 @@ public class Product {
 
     private String desciption;
 
-    private  Double mrp;
+    private Double mrp;
 
     private Double sellingPrice;
 
@@ -33,9 +32,11 @@ public class Product {
     private String image;
 
     @ManyToOne
+    @JoinColumn(name = "category_id")
     private Category category;
 
     @ManyToOne
+    @JoinColumn(name = "store_id")
     private Store store;
 
     private LocalDateTime createdAt;
@@ -43,13 +44,13 @@ public class Product {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    protected void onCreate(){
+    protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
     @PreUpdate
-    protected void onUpdate(){
+    protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 
 }

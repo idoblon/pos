@@ -2,7 +2,7 @@ package com.springboot.POS.payload.dto;
 
 import com.springboot.POS.domain.StoreStatus;
 import com.springboot.POS.modal.StoreContact;
-import com.springboot.POS.modal.User;
+
 import lombok.Data;
 
 import java.time.LocalDateTime;

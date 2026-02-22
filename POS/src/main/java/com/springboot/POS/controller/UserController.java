@@ -17,8 +17,7 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<UserDto> getUserProfile(
-            @RequestHeader("Authorization") String jwt
-    ) throws UserException {
+            @RequestHeader("Authorization") String jwt) throws UserException {
         User user = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
@@ -26,8 +25,8 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> getUserById(
             @RequestHeader("Authorization") String jwt,
-            @PathVariable Long id
-    ) throws UserException, Exception {
+            @PathVariable Long id) throws UserException, Exception {
+        User currentUser = userService.getUserFromJwtToken(jwt);
         User user = userService.getUserById(id);
         if (user == null) {
             throw new UserException("User not found");

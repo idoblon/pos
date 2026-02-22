@@ -1,6 +1,7 @@
 package com.springboot.POS.service.impl;
 
 import com.springboot.POS.domain.StoreStatus;
+import com.springboot.POS.domain.UserRole;
 import com.springboot.POS.exceptions.UserException;
 import com.springboot.POS.mapper.StoreMapper;
 import com.springboot.POS.modal.Store;
@@ -23,7 +24,6 @@ public class StoreServiceImpl implements StoreService {
     private final StoreRepository storeRepository;
     private final UserService userService;
 
-
     @Override
     public StoreDTO createStore(StoreDTO storeDTO, User user) {
         Store store = StoreMapper.toEntity(storeDTO, user);
@@ -33,8 +33,7 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public StoreDTO getStoreById(Long id) throws Exception {
         Store store = storeRepository.findById(id).orElseThrow(
-                () -> new Exception("Store not found with id: " + id)
-        );
+                () -> new Exception("Store not found with id: " + id));
         return StoreMapper.toDTO(store);
     }
 
@@ -165,17 +164,16 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public StoreDTO moderateStore(Long id, StoreStatus status) throws Exception {
         Store store = storeRepository.findById(id).orElseThrow(
-                () -> new Exception("Store not found with id: " + id)
-        );
+                () -> new Exception("Store not found with id: " + id));
 
-        // Add authorization check - only admin can moderate
+        // Only platform-level ROLE_ADMIN can moderate stores
         User currentUser = userService.getCurrentUser();
-        if (currentUser == null || !store.getStoreAdmin().getId().equals(currentUser.getId())) {
-            throw new UserException("You don't have permission to moderate this store");
+        if (currentUser == null || !currentUser.getRole().equals(UserRole.ROLE_ADMIN)) {
+            throw new UserException("Only platform admins can moderate stores");
         }
 
         store.setStatus(status);
-        Store updatedStore = storeRepository.save(store);  // Fixed variable name
-        return StoreMapper.toDTO(updatedStore);  // Fixed variable name
+        Store updatedStore = storeRepository.save(store);
+        return StoreMapper.toDTO(updatedStore);
     }
 }
