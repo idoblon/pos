@@ -42,7 +42,7 @@ public class InventoryController {
     }
 
     @GetMapping("/branch/{branchId}/product/{productId}")
-    public ResponseEntity<InventoryDTO> getInventoryByProductAndBranchId(
+    public ResponseEntity<List<InventoryDTO>> getInventoryByProductAndBranchId(
             @PathVariable Long branchId,
             @PathVariable Long productId
     ) throws Exception{

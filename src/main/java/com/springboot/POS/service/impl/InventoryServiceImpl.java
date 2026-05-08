@@ -10,9 +10,7 @@ import com.springboot.POS.repository.InventoryRepository;
 import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.web.access.WebInvocationPrivilegeEvaluator;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,7 +20,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final BranchRepository branchRepository;
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
-    private final WebInvocationPrivilegeEvaluator webInvocationPrivilegeEvaluator;
+
 
     @Override
     public InventoryDTO createInventory(InventoryDTO inventoryDTO) throws Exception {
@@ -63,13 +61,15 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
                 () -> new Exception("inventory not found....")
         );
-        return null;
+        return InventoryMapper.toDTO(inventory);
     }
 
     @Override
-    public InventoryDTO getInventoryByProductAndBranchId(Long productId, Long branchId) {
-        Inventory inventory = inventoryRepository.findByProductIdAndBranchId(productId,branchId);
-        return InventoryMapper.toDTO(inventory);
+    public List<InventoryDTO> getInventoryByProductAndBranchId(Long productId, Long branchId) {
+        List<Inventory> inventories = inventoryRepository.findByProductIdAndBranchId(productId,branchId);
+        return inventories.stream()
+                .map(InventoryMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     @Override
