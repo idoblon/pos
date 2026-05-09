@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class RedundServiceImpl implements RefundService {
+public class RefundServiceImpl implements RefundService {
 
     private final UserService userService;
     private final OrderRepository orderRepository;

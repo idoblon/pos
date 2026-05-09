@@ -34,6 +34,14 @@ public class UserController {
         }
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
+    @PutMapping("/api/users/{id}")
+    public ResponseEntity<UserDTO> updateUser(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable Long id,
+            @RequestBody UserDTO userDTO) throws UserException, Exception {
+        User updatedUser = userService.updateUser(id, userDTO);
+        return ResponseEntity.ok(UserMapper.toDTO(updatedUser));
+    }
     @GetMapping("/users/list")
     public ResponseEntity<List<User>> getUserList(
            ) throws UserException, Exception {

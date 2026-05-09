@@ -2,7 +2,10 @@ package com.springboot.POS.service.impl;
 
 import com.springboot.POS.configuration.JwtProvider;
 import com.springboot.POS.exceptions.UserException;
+import com.springboot.POS.modal.Branch;
 import com.springboot.POS.modal.User;
+import com.springboot.POS.payload.dto.UserDTO;
+import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
+    private final BranchRepository branchRepository;
 
     @Override
     public User getUserFromJwtToken(String token) throws UserException {
@@ -55,6 +59,18 @@ public class UserServiceImpl implements UserService {
         return userRepository.findById(id).orElseThrow(
                 ()-> new Exception("User not found")
         );
+    }
+    @Override
+    public User updateUser(Long id, UserDTO userDTO) throws Exception {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserException("User not found"));
+
+        if (userDTO.getBranchId() != null) {
+            Branch branch = branchRepository.findById(userDTO.getBranchId())
+                    .orElseThrow(() -> new Exception("Branch not found"));
+            user.setBranch(branch);
+        }
+        return userRepository.save(user);
     }
 
     @Override

@@ -28,6 +28,12 @@ public class RefundController {
         List<RefundDTO> refund = refundService.getAllRefunds();
         return ResponseEntity.ok(refund);
     }
+    @GetMapping("/{id}")
+    public ResponseEntity<RefundDTO> getRefundById(@PathVariable Long id) throws Exception {
+        RefundDTO refund = refundService.getRefundById(id);
+        return ResponseEntity.ok(refund);
+    }
+
     @GetMapping("/cashier/{cashierId}")
     public ResponseEntity<List<RefundDTO>> getRefundByCashier(
             @PathVariable Long cashierId
