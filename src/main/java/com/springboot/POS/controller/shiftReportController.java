@@ -1,6 +1,14 @@
 package com.springboot.POS.controller;
 
+import com.springboot.POS.mapper.ShiftReportMapper;
+import com.springboot.POS.modal.Order;
+import com.springboot.POS.modal.Refund;
+import com.springboot.POS.modal.ShiftReport;
+import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.ShiftReportDTO;
+import com.springboot.POS.repository.OrderRepository;
+import com.springboot.POS.repository.RefundRepository;
+import com.springboot.POS.repository.ShiftReportRepository;
 import com.springboot.POS.service.ShiftReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -17,6 +25,9 @@ import java.util.List;
 public class shiftReportController {
 
     private final ShiftReportService shiftReportService;
+    private final ShiftReportRepository shiftReportRepository;
+    private final OrderRepository orderRepository;
+    private final RefundRepository refundRepository;
 
     @PostMapping("/start")
     public ResponseEntity<ShiftReportDTO> startShift() throws Exception {
@@ -33,7 +44,7 @@ public class shiftReportController {
     @GetMapping("/current")
     public ResponseEntity<ShiftReportDTO> getCurrentShiftProgress() throws Exception {
         return ResponseEntity.ok(
-                shiftReportService.getCurrentShiftProgress( null)
+                shiftReportService.getCurrentShiftReportProgress()
         );
     }
     @GetMapping("/cashier/{cashierId}/by-date")
@@ -61,6 +72,8 @@ public class shiftReportController {
                 shiftReportService.getShiftReportByBranchId(branchId)
         );
     }
+
+
 
     @GetMapping("/{id}")
     public ResponseEntity<ShiftReportDTO> getShiftReportById(

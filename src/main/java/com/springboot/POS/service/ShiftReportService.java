@@ -16,5 +16,6 @@ public interface ShiftReportService {
     List<ShiftReportDTO> getShiftReportByCashierId(Long cashierId);
     ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception;
     ShiftReportDTO getShiftByCashierAndDate(Long cashierId, LocalDateTime date) throws Exception;
+    ShiftReportDTO getCurrentShiftReportProgress() throws Exception;
 
 }
