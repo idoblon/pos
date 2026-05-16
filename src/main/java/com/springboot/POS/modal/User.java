@@ -46,4 +46,6 @@ public class User {
     private LocalDateTime updatedAt;
     private LocalDateTime lastLogin;
 
+    private Boolean deleted = false;
+
 }

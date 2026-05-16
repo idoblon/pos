@@ -1,5 +1,6 @@
 package com.springboot.POS.modal;
 
+import com.springboot.POS.domain.OrderStatus;
 import com.springboot.POS.domain.PaymentType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,14 +34,20 @@ public class Order {
     @ManyToOne
     private Customer customer;
 
-    @OneToMany(mappedBy = "order",cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 
     private PaymentType paymentType;
 
+    @Builder.Default
+    private OrderStatus status = OrderStatus.PENDING;
+
+    private Boolean deleted = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (status == null) status = OrderStatus.PENDING;
     }
 
 }

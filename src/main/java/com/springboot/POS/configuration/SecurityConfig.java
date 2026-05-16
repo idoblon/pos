@@ -25,9 +25,9 @@ public class SecurityConfig {
 
         return http
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(Authorize -> Authorize.requestMatchers("/api/**").authenticated()
-                        .requestMatchers("/api/super-admin/**")
-                        .hasRole("ADMIN")
+                .authorizeHttpRequests(Authorize -> Authorize
+                        .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class
                 ).csrf(AbstractHttpConfigurer::disable)
@@ -52,7 +52,7 @@ private CorsConfigurationSource corsConfigurationSource() {
             cfg.setAllowedOrigins(
                     Arrays.asList(
                             "http://localhost:5173",
-                            "http://localhsot:3000"
+                            "http://localhost:3000"
                     )
             );
             cfg.setAllowedMethods(Collections.singletonList("*"));

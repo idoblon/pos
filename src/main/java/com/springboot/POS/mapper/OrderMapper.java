@@ -15,9 +15,10 @@ public class OrderMapper {
                 .cashier(UserMapper.toDTO(order.getCashier()))
                 .customer(order.getCustomer())
                 .paymentType(order.getPaymentType())
+                .status(order.getStatus())
                 .createdAt(order.getCreatedAt())
                 .items(order.getItems().stream()
-                        .map(OrderItemMapper:: toDTO)
+                        .map(OrderItemMapper::toDTO)
                         .collect(Collectors.toList()))
                 .build();
     }

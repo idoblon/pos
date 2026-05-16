@@ -1,6 +1,5 @@
 package com.springboot.POS.payload.dto;
 
-import jakarta.persistence.ManyToOne;
 import lombok.Builder;
 import lombok.Data;
 

@@ -32,6 +32,21 @@ public class RefundServiceImpl implements RefundService {
                 () -> new Exception("Order not found")
         );
 
+        // Validate refund amount
+        if (refund.getAmount() == null || refund.getAmount() <= 0) {
+            throw new Exception("Refund amount must be greater than zero");
+        }
+        if (refund.getAmount() > order.getTotalAmount()) {
+            throw new Exception("Refund amount (" + refund.getAmount() + ") cannot exceed order total (" + order.getTotalAmount() + ")");
+        }
+
+        // Check if order was already fully refunded
+        List<Refund> existingRefunds = refundRepository.findByOrderId(order.getId());
+        double totalRefunded = existingRefunds.stream().mapToDouble(Refund::getAmount).sum();
+        if (totalRefunded + refund.getAmount() > order.getTotalAmount()) {
+            throw new Exception("Total refunds would exceed order amount. Already refunded: " + totalRefunded);
+        }
+
         Branch branch = order.getBranch();
 
         Refund createdRefund = Refund.builder()

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 
 @Service
@@ -35,6 +36,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse signup(UserDTO userDto) throws UserException {
+        if (userDto.getFullName() == null || userDto.getFullName().isBlank()) {
+            throw new UserException("Full name is required");
+        }
+        if (userDto.getRole() == null) {
+            throw new UserException("Role is required");
+        }
         User user = userRepository.findByEmail(userDto.getEmail());
         if (user != null){
             throw new UserException("email id already registered ! ");
@@ -64,10 +71,15 @@ public class AuthServiceImpl implements AuthService {
 
         String jwt = jwtProvider.generateToken(authentication);
 
+        UserDTO userDTO = UserMapper.toDTO(savedUser);
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);
         authResponse.setMessage("Registered Successfully");
-        authResponse.setUser(UserMapper.toDTO(savedUser));
+        authResponse.setUser(userDTO);
+        authResponse.setRole(savedUser.getRole());
+        authResponse.setStoreId(userDTO.getStoreId());
+        authResponse.setBranchId(userDTO.getBranchId());
+        authResponse.setStoreName(userDTO.getStoreName());
         return authResponse;
     }
 
@@ -89,10 +101,40 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
+        UserDTO userDTO = UserMapper.toDTO(user);
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);
         authResponse.setMessage("Login Successfully");
-        authResponse.setUser(UserMapper.toDTO(user));
+        authResponse.setUser(userDTO);
+        authResponse.setRole(user.getRole());
+        authResponse.setStoreId(userDTO.getStoreId());
+        authResponse.setBranchId(userDTO.getBranchId());
+        authResponse.setStoreName(userDTO.getStoreName());
+        return authResponse;
+    }
+
+    @Override
+    public AuthResponse refreshToken(String jwt) throws UserException {
+        String email = jwtProvider.getEmailFromToken(jwt);
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new UserException("User not found");
+        }
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                email, null, List.of(() -> user.getRole().name())
+        );
+        String newJwt = jwtProvider.generateToken(authentication);
+
+        UserDTO userDTO = UserMapper.toDTO(user);
+        AuthResponse authResponse = new AuthResponse();
+        authResponse.setJwt(newJwt);
+        authResponse.setMessage("Token refreshed successfully");
+        authResponse.setUser(userDTO);
+        authResponse.setRole(user.getRole());
+        authResponse.setStoreId(userDTO.getStoreId());
+        authResponse.setBranchId(userDTO.getBranchId());
+        authResponse.setStoreName(userDTO.getStoreName());
         return authResponse;
     }
     private Authentication authenticate(String email, String password) throws UserException {

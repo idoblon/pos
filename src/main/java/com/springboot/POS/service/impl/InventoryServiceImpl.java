@@ -79,4 +79,17 @@ public class InventoryServiceImpl implements InventoryService {
                 InventoryMapper::toDTO
         ).collect(Collectors.toList());
     }
+
+    @Override
+    public void deductStock(Long productId, Long branchId, int quantity) throws Exception {
+        Inventory inventory = inventoryRepository.findFirstByProductIdAndBranchId(productId, branchId)
+                .orElseThrow(() -> new Exception("Product not found in branch inventory"));
+        
+        if (inventory.getQuantity() < quantity) {
+            throw new Exception("Insufficient stock: available=" + inventory.getQuantity() + ", required=" + quantity);
+        }
+        
+        inventory.setQuantity(inventory.getQuantity() - quantity);
+        inventoryRepository.save(inventory);
+    }
 }

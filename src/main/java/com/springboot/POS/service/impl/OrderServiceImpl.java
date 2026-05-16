@@ -5,9 +5,9 @@ import com.springboot.POS.domain.PaymentType;
 import com.springboot.POS.mapper.OrderMapper;
 import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.OrderDTO;
-import com.springboot.POS.repository.OrderItemRepository;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.ProductRepository;
+import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.OrderService;
 import com.springboot.POS.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 @RequiredArgsConstructor
 public class OrderServiceImpl implements OrderService {
@@ -26,9 +28,10 @@ public class OrderServiceImpl implements OrderService {
     private final UserService userService;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final InventoryService inventoryService;
 
     @Override
+    @Transactional
     public OrderDTO createOrder(OrderDTO orderDTO) throws Exception {
         User cashier = userService.getCurrentUser();
 
@@ -65,6 +68,12 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);
+        
+        // Deduct inventory after successful order save
+        for (OrderItem item : orderItems) {
+            inventoryService.deductStock(item.getProduct().getId(), branch.getId(), item.getQuantity());
+        }
+        
         return OrderMapper.toDTO(savedOrder);
     }
 
@@ -84,14 +93,16 @@ public class OrderServiceImpl implements OrderService {
                                             PaymentType paymentType,
                                             OrderStatus status) throws Exception {
         return orderRepository.findByBranchId(branchId).stream()
-                .filter(order -> customerId==null ||
-                        (order.getCustomer()!=null &&
+                .filter(order -> customerId == null ||
+                        (order.getCustomer() != null &&
                                 order.getCustomer().getId().equals(customerId)))
-                .filter(order -> cashierId==null ||
-                        order.getCashier()!=null &&
+                .filter(order -> cashierId == null ||
+                        order.getCashier() != null &&
                         order.getCashier().getId().equals(cashierId))
                 .filter(order -> paymentType == null ||
-                        order.getPaymentType()==paymentType)
+                        order.getPaymentType() == paymentType)
+                .filter(order -> status == null ||
+                        order.getStatus() == status)
                 .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 

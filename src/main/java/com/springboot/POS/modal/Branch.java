@@ -29,6 +29,8 @@ public class Branch {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private Boolean deleted = false;
+
     @ManyToOne
     private Store store;
 

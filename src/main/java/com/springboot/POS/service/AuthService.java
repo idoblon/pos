@@ -7,5 +7,6 @@ import com.springboot.POS.payload.response.AuthResponse;
 public interface AuthService {
     AuthResponse signup(UserDTO userDto) throws UserException;
     AuthResponse login(UserDTO userDto) throws UserException;
+    AuthResponse refreshToken(String jwt) throws UserException;
 
 }

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"sku", "store_id"}))
 public class Product {
 
     @Id
@@ -19,7 +20,7 @@ public class Product {
 
     @Column(nullable = false)
     private String name;
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String sku;
 
     private String desciption;
@@ -30,6 +31,8 @@ public class Product {
 
     private String brand;
     private String image;
+
+    private Boolean deleted = false;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

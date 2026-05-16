@@ -11,6 +11,8 @@ import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -85,15 +87,21 @@ public class ProductServiceImpl implements ProductService {
                 Product product = productRepository.findById(id).orElseThrow(
                                 () -> new Exception("product not found"));
 
-                productRepository.delete(product);
+                product.setDeleted(true);
+                productRepository.save(product);
         }
 
         @Override
         public List<ProductDTO> getProductsByStoreId(Long storeId) {
-                List<Product> product = productRepository.findByStoreId(storeId);
-                return product.stream()
+                return productRepository.findByStoreIdAndDeletedFalse(storeId).stream()
                                 .map(ProductMapper::toDTO)
                                 .collect(Collectors.toList());
+        }
+
+        @Override
+        public Page<ProductDTO> getProductsByStoreId(Long storeId, Pageable pageable) {
+                return productRepository.findByStoreIdAndDeletedFalse(storeId, pageable)
+                                .map(ProductMapper::toDTO);
         }
 
         @Override

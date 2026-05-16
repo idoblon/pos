@@ -84,7 +84,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         );
         existingEmployee.setEmail(employeeDetails.getEmail());
         existingEmployee.setFullName(employeeDetails.getFullName());
-        existingEmployee.setPassword(employeeDetails.getPassword());
+        if (employeeDetails.getPassword() != null && !employeeDetails.getPassword().isBlank()) {
+            existingEmployee.setPassword(passwordEncoder.encode(employeeDetails.getPassword()));
+        }
         existingEmployee.setRole(employeeDetails.getRole());
         existingEmployee.setBranch(branch);
         return userRepository.save(existingEmployee);
@@ -95,7 +97,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         User employee = userRepository.findById(employeeId).orElseThrow(
                 () -> new Exception("employee not found")
         );
-        userRepository.delete(employee);
+        employee.setDeleted(true);
+        userRepository.save(employee);
     }
 
     @Override
@@ -103,7 +106,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Store store = storeRepository.findById(storeId).orElseThrow(
                 () -> new Exception("Store not found")
         );
-        return userRepository.findByStore(store).stream()
+        return userRepository.findByStoreAndDeletedFalse(store).stream()
                 .filter(user -> role == null || user.getRole() == role)
                 .map(UserMapper::toDTO)
                 .collect(Collectors.toList());
@@ -111,11 +114,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public List<UserDTO> findBranchEmployees(Long branchId, UserRole role) throws Exception {
-        Branch branch = userRepository.findById(branchId).orElseThrow(
-                () -> new Exception("branch not found")
-        ).getBranch();
-
-        return userRepository.findByBranchId(branchId)
+        return userRepository.findByBranchIdAndDeletedFalse(branchId)
                 .stream().filter(
                         user -> role == null || user.getRole() == role
                 )

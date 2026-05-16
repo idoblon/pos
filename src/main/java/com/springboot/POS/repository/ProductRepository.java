@@ -1,6 +1,8 @@
 package com.springboot.POS.repository;
 
 import com.springboot.POS.modal.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +13,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     List<Product> findByStoreId(Long storeId);
 
+    Page<Product> findByStoreId(Long storeId, Pageable pageable);
+
+    List<Product> findByStoreIdAndDeletedFalse(Long storeId);
+
+    Page<Product> findByStoreIdAndDeletedFalse(Long storeId, Pageable pageable);
+
     @Query(
             "select p from Product p " +
              "where p.store.id = :storeId and (" +
@@ -19,6 +27,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                     "or lower(p.sku) like lower(concat('%', :query, '%'))"+
                     ")"
     )
-    List<Product> searchByKeyword(@Param("storeId")Long storeId,
-                                  @Param("query")String keyword);
+    List<Product> searchByKeyword(@Param("storeId") Long storeId,
+                                  @Param("query") String keyword);
 }

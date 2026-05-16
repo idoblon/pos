@@ -66,13 +66,14 @@ public class BranchServiceImpl implements BranchService {
         Branch existing = branchRepository.findById(id).orElseThrow(
                 ()-> new Exception("branch does not exist....")
         );
-        branchRepository.delete(existing);
+        existing.setDeleted(true);
+        branchRepository.save(existing);
     }
 
     @Override
     public List<BranchDTO> getAllBranchesByStoreId(Long storeId) {
-        List<Branch> branches = branchRepository.findByStoreId(storeId);
-        return branches.stream().map(BranchMapper::toDTO)
+        return branchRepository.findByStoreIdAndDeletedFalse(storeId).stream()
+                .map(BranchMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
