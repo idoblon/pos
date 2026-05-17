@@ -1,7 +1,6 @@
 package com.springboot.POS.payload.dto;
 
 import com.springboot.POS.modal.*;
-import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Data;
 
@@ -37,5 +36,12 @@ public class ShiftReportDTO {
 
 
     private List<RefundDTO> refunds;
+
+    // Cash reconciliation
+    private Double openingFloat;
+    private Double declaredCash;
+    private Double expectedCash;
+    private Double cashDiscrepancy;
+    private String reconciliationStatus;
 
 }

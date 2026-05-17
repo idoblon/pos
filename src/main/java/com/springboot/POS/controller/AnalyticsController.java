@@ -152,6 +152,58 @@ public class AnalyticsController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/branch/{branchId}/daily-comparison")
+    public ResponseEntity<Map<String, Object>> getDailyComparison(
+            @PathVariable Long branchId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireBranchAccess(user, branchId);
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime yesterdayStart = todayStart.minusDays(1);
+
+        List<Order> today = orderRepository.findByBranchIdAndCreatedAtBetween(
+                branchId, todayStart, todayStart.plusDays(1));
+        List<Order> yesterday = orderRepository.findByBranchIdAndCreatedAtBetween(
+                branchId, yesterdayStart, todayStart);
+
+        double todaySales = today.stream().mapToDouble(Order::getTotalAmount).sum();
+        double yesterdaySales = yesterday.stream().mapToDouble(Order::getTotalAmount).sum();
+        double change = yesterdaySales == 0 ? 100.0
+                : ((todaySales - yesterdaySales) / yesterdaySales) * 100;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("todaySales", todaySales);
+        result.put("todayOrders", today.size());
+        result.put("yesterdaySales", yesterdaySales);
+        result.put("yesterdayOrders", yesterday.size());
+        result.put("changePercent", Math.round(change * 100.0) / 100.0);
+        result.put("trend", change >= 0 ? "UP" : "DOWN");
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/store/{storeId}/peak-hours")
+    public ResponseEntity<List<Map<String, Object>>> getPeakHours(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+
+        List<Order> orders = orderRepository.findByStoreId(storeId);
+        Map<Integer, Long> hourCounts = orders.stream()
+                .collect(Collectors.groupingBy(
+                        o -> o.getCreatedAt().getHour(), Collectors.counting()));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int h = 0; h < 24; h++) {
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("hour", String.format("%02d:00", h));
+            point.put("orders", hourCounts.getOrDefault(h, 0L));
+            result.add(point);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     private Map<String, Object> buildSummary(List<Order> orders, Long storeId,
                                               String startDate, String endDate) {
         double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();

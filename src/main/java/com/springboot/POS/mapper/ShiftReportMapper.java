@@ -30,6 +30,11 @@ public class ShiftReportMapper {
                 .topSellingProducts(mapProducts(entity.getTopSellingProducts()))
                 .refunds(mapRefunds(entity.getRefunds()))
                 .paymentSummaries(entity.getPaymentSummaries())
+                .openingFloat(entity.getOpeningFloat())
+                .declaredCash(entity.getDeclaredCash())
+                .expectedCash(entity.getExpectedCash())
+                .cashDiscrepancy(entity.getCashDiscrepancy())
+                .reconciliationStatus(entity.getReconciliationStatus())
                 .build();
     }
 

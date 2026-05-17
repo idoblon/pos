@@ -68,4 +68,14 @@ public class InventoryController {
         ownershipGuard.requireBranchAccess(user, branchId);
         return ResponseEntity.ok(inventoryService.getInventoryByProductAndBranchId(productId, branchId));
     }
+
+    @GetMapping("/branch/{branchId}/low-stock")
+    public ResponseEntity<List<InventoryDTO>> getLowStock(
+            @PathVariable Long branchId,
+            @RequestParam(defaultValue = "10") int threshold,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireBranchAccess(user, branchId);
+        return ResponseEntity.ok(inventoryService.getLowStockItems(branchId, threshold));
+    }
 }

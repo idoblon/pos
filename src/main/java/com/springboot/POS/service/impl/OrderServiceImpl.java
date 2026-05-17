@@ -50,21 +50,30 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> orderItems = orderDTO.getItems().stream().map(
                 itemDTO -> {
                     Product product = productRepository.findById(itemDTO.getProductId())
-                            .orElseThrow(() -> new EntityNotFoundException("product not found"));
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Product not found: id=" + itemDTO.getProductId()));
+
+                    if (Boolean.TRUE.equals(product.getDeleted())) {
+                        throw new EntityNotFoundException(
+                                "Product no longer available: " + product.getName());
+                    }
+
+                    // Always recalculate from current DB price — never trust frontend price
+                    double lineTotal = product.getSellingPrice() * itemDTO.getQuantity();
 
                     return OrderItem.builder()
                             .product(product)
                             .quantity(itemDTO.getQuantity())
-                            .price(product.getSellingPrice()* itemDTO.getQuantity())
+                            .price(lineTotal)
                             .order(order)
                             .build();
-
                 }
         ).toList();
-        double total = orderItems.stream().mapToDouble(
-                OrderItem::getPrice
-        ).sum();
-        order.setTotalAmount(total);
+
+        double recalculatedTotal = orderItems.stream()
+                .mapToDouble(OrderItem::getPrice).sum();
+
+        order.setTotalAmount(recalculatedTotal);
         order.setItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);

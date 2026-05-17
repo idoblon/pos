@@ -11,6 +11,9 @@ import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -81,15 +84,28 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional
     public void deductStock(Long productId, Long branchId, int quantity) throws Exception {
-        Inventory inventory = inventoryRepository.findFirstByProductIdAndBranchId(productId, branchId)
+        Inventory inventory = inventoryRepository
+                .findByProductIdAndBranchIdWithLock(productId, branchId)
                 .orElseThrow(() -> new Exception("Product not found in branch inventory"));
-        
+
         if (inventory.getQuantity() < quantity) {
-            throw new Exception("Insufficient stock: available=" + inventory.getQuantity() + ", required=" + quantity);
+            throw new Exception("Insufficient stock for product id=" + productId
+                    + ": available=" + inventory.getQuantity()
+                    + ", required=" + quantity);
         }
-        
+
         inventory.setQuantity(inventory.getQuantity() - quantity);
         inventoryRepository.save(inventory);
+    }
+
+    @Override
+    public List<InventoryDTO> getLowStockItems(Long branchId, int threshold) {
+        return inventoryRepository.findByBranchId(branchId).stream()
+                .filter(inv -> inv.getQuantity() <= threshold)
+                .sorted(Comparator.comparingInt(Inventory::getQuantity))
+                .map(InventoryMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }

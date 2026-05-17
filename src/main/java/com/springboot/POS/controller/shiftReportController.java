@@ -18,15 +18,18 @@ public class shiftReportController {
     private final ShiftReportService shiftReportService;
 
     @PostMapping("/start")
-    public ResponseEntity<ShiftReportDTO> startShift() throws Exception {
-        return ResponseEntity.ok(
-                shiftReportService.startShift()
-        );
+    public ResponseEntity<ShiftReportDTO> startShift(
+            @RequestParam(required = false, defaultValue = "0") Double openingFloat
+    ) throws Exception {
+        return ResponseEntity.ok(shiftReportService.startShift(openingFloat));
     }
+
     @PatchMapping("/end")
-    public ResponseEntity<ShiftReportDTO> endShift() throws Exception {
+    public ResponseEntity<ShiftReportDTO> endShift(
+            @RequestParam(required = false, defaultValue = "0") Double declaredCash
+    ) throws Exception {
         return ResponseEntity.ok(
-                shiftReportService.endShift(null, LocalDateTime.now())
+                shiftReportService.endShift(null, LocalDateTime.now(), declaredCash)
         );
     }
     @GetMapping("/current")

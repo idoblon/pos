@@ -9,7 +9,6 @@ import com.springboot.POS.repository.*;
 import com.springboot.POS.service.ShiftReportService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.loader.LoaderLogging;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -30,7 +29,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
 
     @Override
-    public ShiftReportDTO startShift() throws Exception {
+    public ShiftReportDTO startShift(Double openingFloat) throws Exception {
         User currentUser = userService.getCurrentUser();
         LocalDateTime shiftStart = LocalDateTime.now();
 
@@ -40,7 +39,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         Optional<ShiftReport> existing = shiftReportRepository.findByCashierAndShiftStartBetween(
                 currentUser, startOfDay, endOfDay
         );
-        if(existing.isPresent()){
+        if (existing.isPresent()) {
             throw new Exception("Shift already started today");
         }
         Branch branch = currentUser.getBranch();
@@ -49,13 +48,14 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .cashier(currentUser)
                 .shiftStart(shiftStart)
                 .branch(branch)
+                .openingFloat(openingFloat != null ? openingFloat : 0.0)
                 .build();
         ShiftReport savedReport = shiftReportRepository.save(shiftReport);
         return ShiftReportMapper.toDTO(savedReport);
     }
 
     @Override
-    public ShiftReportDTO endShift(Long shiftReportId, LocalDateTime shiftEnd) throws Exception {
+    public ShiftReportDTO endShift(Long shiftReportId, LocalDateTime shiftEnd, Double declaredCash) throws Exception {
         User currentUser = userService.getCurrentUser();
 
         ShiftReport shiftReport = shiftReportRepository
@@ -70,31 +70,48 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(refund -> refund.getAmount()!=null?
-                        refund.getAmount():0.0).sum();
+                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0).sum();
 
         List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
                 currentUser, shiftReport.getShiftStart(), shiftReport.getShiftEnd()
         );
 
-        double totalSales = orders.stream()
-                .mapToDouble(Order :: getTotalAmount).sum();
-
+        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
         int totalOrders = orders.size();
+        double netSales = totalSales - totalRefunds;
 
-        double netSales = totalSales-totalRefunds;
+        // Cash reconciliation algorithm
+        double cashSales = orders.stream()
+                .filter(o -> o.getPaymentType() == com.springboot.POS.domain.PaymentType.CASH)
+                .mapToDouble(Order::getTotalAmount).sum();
+        double cashRefunds = refunds.stream()
+                .filter(r -> r.getPaymentType() == com.springboot.POS.domain.PaymentType.CASH)
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+
+        double openingFloat = shiftReport.getOpeningFloat() != null ? shiftReport.getOpeningFloat() : 0.0;
+        double expectedCash = openingFloat + cashSales - cashRefunds;
+        double declared = declaredCash != null ? declaredCash : 0.0;
+        double discrepancy = declared - expectedCash;
+
+        String reconciliationStatus;
+        if (Math.abs(discrepancy) < 0.01) reconciliationStatus = "MATCHED";
+        else if (discrepancy > 0) reconciliationStatus = "SURPLUS";
+        else reconciliationStatus = "SHORTAGE";
 
         shiftReport.setTotalRefunds(totalRefunds);
         shiftReport.setTotalSales(totalSales);
         shiftReport.setTotalOrders(totalOrders);
         shiftReport.setNetSale(netSales);
+        shiftReport.setDeclaredCash(declared);
+        shiftReport.setExpectedCash(expectedCash);
+        shiftReport.setCashDiscrepancy(discrepancy);
+        shiftReport.setReconciliationStatus(reconciliationStatus);
         shiftReport.setRecentOrders(getRecentOrders(orders));
         shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
         shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
         shiftReport.setRefunds(refunds);
-        
-        ShiftReport savedReport = shiftReportRepository.save(shiftReport);
 
+        ShiftReport savedReport = shiftReportRepository.save(shiftReport);
         return ShiftReportMapper.toDTO(savedReport);
     }
 
@@ -144,9 +161,9 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<Order> orders= orderRepository.findByCashierAndCreatedAtBetween(
                 user, shiftReport.getShiftStart(),now
         );
-        List<Refund> refunds=refundRepository.findByCashierIdAndCreatedAtBetween(
+        List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
                 user.getId(),
-                shiftReport.getShiftStart(), shiftReport.getShiftEnd()
+                shiftReport.getShiftStart(), now
         );
 
         double totalRefunds = refunds.stream()

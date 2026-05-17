@@ -45,5 +45,11 @@ public class ShiftReport {
     @OneToMany(mappedBy = "shiftReport", cascade = CascadeType.ALL)
     private List<Refund> refunds;
 
+    // Cash reconciliation
+    private Double openingFloat;      // cash in drawer at shift start
+    private Double declaredCash;      // cash cashier counts at shift end
+    private Double expectedCash;      // calculated: openingFloat + cash sales - cash refunds
+    private Double cashDiscrepancy;   // declaredCash - expectedCash
+    private String reconciliationStatus; // MATCHED, SURPLUS, SHORTAGE
 
 }

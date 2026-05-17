@@ -21,11 +21,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query(
             "select p from Product p " +
-             "where p.store.id = :storeId and (" +
+             "where p.store.id = :storeId and p.deleted = false and (" +
             "lower(p.name) like lower(concat('%', :query, '%'))"+
             "or lower(p.brand) like lower(concat('%', :query, '%'))"+
                     "or lower(p.sku) like lower(concat('%', :query, '%'))"+
-                    ")"
+                    ") order by " +
+            "case when lower(p.sku) = lower(:query) then 0 " +
+            "when lower(p.name) = lower(:query) then 1 " +
+            "when lower(p.name) like lower(concat(:query, '%')) then 2 " +
+            "else 3 end"
     )
     List<Product> searchByKeyword(@Param("storeId") Long storeId,
                                   @Param("query") String keyword);

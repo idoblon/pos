@@ -12,4 +12,5 @@ public interface InventoryService {
     List<InventoryDTO> getInventoryByProductAndBranchId(Long productId, Long branchId);
     List<InventoryDTO> getAllInventoryByBranchId(Long branchId);
     void deductStock(Long productId, Long branchId, int quantity) throws Exception;
+    List<InventoryDTO> getLowStockItems(Long branchId, int threshold);
 }
