@@ -21,7 +21,7 @@ public class ProductMapper {
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
-      //            .categoryId(product.ge)
+
     }
 
     public static Product toEntity(ProductDTO productDTO, Store store,
@@ -35,6 +35,7 @@ public class ProductMapper {
                 .mrp(productDTO.getMrp())
                 .sellingPrice(productDTO.getSellingPrice())
                 .brand(productDTO.getBrand())
+                .image(productDTO.getImage())
                 .build();
     }
 }

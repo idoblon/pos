@@ -23,6 +23,11 @@ public class Customer {
 
     private String phone;
 
+    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    @org.hibernate.annotations.UpdateTimestamp
     private LocalDateTime updatedAt;
 }

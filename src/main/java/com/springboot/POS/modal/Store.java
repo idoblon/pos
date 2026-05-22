@@ -26,7 +26,12 @@ public class Store {
     @OneToOne
     private User storeAdmin;
 
+    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    @org.hibernate.annotations.UpdateTimestamp
     private LocalDateTime updatedAt;
 
     private String description;
@@ -40,13 +45,7 @@ public class Store {
 
     @PrePersist
     protected void onCreate(){
-        createdAt = LocalDateTime.now();
         status = StoreStatus.PENDING;
-    }
-
-    @PreUpdate
-    protected void onUpdate(){
-        updatedAt = LocalDateTime.now();
     }
 
 }

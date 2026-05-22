@@ -23,6 +23,8 @@ public class Order {
 
     private Double totalAmount;
 
+    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
 
     @ManyToOne
@@ -46,7 +48,6 @@ public class Order {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
         if (status == null) status = OrderStatus.PENDING;
     }
 

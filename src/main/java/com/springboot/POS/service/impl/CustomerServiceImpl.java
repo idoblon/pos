@@ -53,7 +53,17 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public List<Customer> searchCustomers(String keyword) {
-        return customerRepository.findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
-                keyword, keyword);
+        // First get customers matching by fullName
+        List<Customer> nameMatches = customerRepository.findByFullNameContainingIgnoreCaseOrderByFullName(keyword);
+        
+        // Then get customers matching by email (excluding those already found by name)
+        List<Customer> emailMatches = customerRepository.findByEmailContainingIgnoreCaseOrderByFullName(keyword);
+        
+        // Remove duplicates and combine results (name matches first)
+        emailMatches.removeIf(customer -> nameMatches.stream()
+                .anyMatch(nameMatch -> nameMatch.getId().equals(customer.getId())));
+        
+        nameMatches.addAll(emailMatches);
+        return nameMatches;
     }
 }

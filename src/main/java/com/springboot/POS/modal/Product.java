@@ -42,18 +42,14 @@ public class Product {
     @JoinColumn(name = "store_id")
     private Store store;
 
+    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    @org.hibernate.annotations.UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 
 }

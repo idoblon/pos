@@ -36,12 +36,11 @@ public class Refund {
     @ManyToOne
     private Branch branch;
 
+    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
 
     private PaymentType paymentType;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+
 }
