@@ -27,10 +27,12 @@ public class User {
 
     @ManyToOne
     @JoinColumn(name = "store_id")
+    @JsonIgnore
     private Store store;
 
 
     @ManyToOne
+    @JoinColumn(name = "branch_id")
     @JsonIgnore
     private Branch branch;
 
@@ -53,5 +55,14 @@ public class User {
     private LocalDateTime lastLogin;
 
     private Boolean deleted = false;
+
+    // Expose only IDs in JSON response
+    public Long getStoreId() {
+        return store != null ? store.getId() : null;
+    }
+
+    public Long getBranchId() {
+        return branch != null ? branch.getId() : null;
+    }
 
 }

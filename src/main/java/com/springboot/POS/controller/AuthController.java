@@ -24,17 +24,17 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signupHandler(
             @RequestBody @Valid UserDTO userDto
-            )throws UserException {
-                return ResponseEntity.ok(
-                        authService.signup(userDto)
-                );
+    ) throws UserException {
+        return ResponseEntity.ok(
+                authService.signup(userDto)
+        );
 
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> loginHandler(
             @RequestBody UserDTO userDto
-    )throws UserException {
+    ) throws UserException {
         return ResponseEntity.ok(
                 authService.login(userDto)
         );

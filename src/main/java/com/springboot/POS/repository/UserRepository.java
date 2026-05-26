@@ -11,6 +11,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     User findByEmail(String email);
 
     List<User> findByStoreAndDeletedFalse(Store store);
-    List<User> findByBranchIdAndDeletedFalse(Long branchId);
+    List<User> findByBranch_IdAndDeletedFalse(Long branchId);
 
 }

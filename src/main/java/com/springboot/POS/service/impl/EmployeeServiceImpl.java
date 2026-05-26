@@ -114,7 +114,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public List<UserDTO> findBranchEmployees(Long branchId, UserRole role) throws Exception {
-        return userRepository.findByBranchIdAndDeletedFalse(branchId)
+        return userRepository.findByBranch_IdAndDeletedFalse(branchId)
                 .stream().filter(
                         user -> role == null || user.getRole() == role
                 )
