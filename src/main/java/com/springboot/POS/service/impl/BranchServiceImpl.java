@@ -72,9 +72,29 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     public List<BranchDTO> getAllBranchesByStoreId(Long storeId) {
-        return branchRepository.findByStoreIdAndDeletedFalse(storeId).stream()
+        System.out.println("=== GET BRANCHES DEBUG ===");
+        System.out.println("Requested storeId: " + storeId);
+        
+        List<Branch> branches = branchRepository.findByStoreIdAndDeletedFalse(storeId);
+        System.out.println("Found branches count: " + branches.size());
+        
+        if (!branches.isEmpty()) {
+            branches.forEach(branch -> {
+                System.out.println("Branch ID: " + branch.getId() + 
+                                 ", Name: " + branch.getName() + 
+                                 ", Store ID: " + (branch.getStore() != null ? branch.getStore().getId() : "null") +
+                                 ", Deleted: " + branch.getDeleted());
+            });
+        }
+        
+        List<BranchDTO> result = branches.stream()
                 .map(BranchMapper::toDTO)
                 .collect(Collectors.toList());
+                
+        System.out.println("Returning DTOs count: " + result.size());
+        System.out.println("========================");
+        
+        return result;
     }
 
     @Override

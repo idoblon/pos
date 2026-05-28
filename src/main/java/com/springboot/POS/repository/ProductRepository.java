@@ -15,9 +15,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByStoreId(Long storeId, Pageable pageable);
 
-    List<Product> findByStoreIdAndDeletedFalse(Long storeId);
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND (p.deleted = false OR p.deleted IS NULL)")
+    List<Product> findByStoreIdAndDeletedFalse(@Param("storeId") Long storeId);
 
-    Page<Product> findByStoreIdAndDeletedFalse(Long storeId, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND (p.deleted = false OR p.deleted IS NULL)")
+    Page<Product> findByStoreIdAndDeletedFalse(@Param("storeId") Long storeId, Pageable pageable);
 
     @Query(
             "select p from Product p " +

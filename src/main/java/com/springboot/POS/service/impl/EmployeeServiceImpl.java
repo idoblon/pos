@@ -27,6 +27,12 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
+        // Check if email already exists
+        User existingUser = userRepository.findByEmail(employee.getEmail());
+        if (existingUser != null) {
+            throw new Exception("Email already registered");
+        }
+        
         Store store = storeRepository.findById(storeId).orElseThrow(
                 () -> new Exception("Store not found")
         );
@@ -56,7 +62,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public UserDTO createBranchEmployee(UserDTO employee, Long branchId) throws Exception {
-       Branch branch = branchRepository.findById(branchId).orElseThrow(
+        // Check if email already exists
+        User existingUser = userRepository.findByEmail(employee.getEmail());
+        if (existingUser != null) {
+            throw new Exception("Email already registered");
+        }
+        
+        Branch branch = branchRepository.findById(branchId).orElseThrow(
                 () -> new Exception("branch not found")
         );
 
@@ -65,6 +77,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
            User user = UserMapper.toEntity(employee);
            user.setBranch(branch);
+           user.setStore(branch.getStore());
            user.setPassword(passwordEncoder.encode(employee.getPassword()));
            return UserMapper.toDTO(userRepository.save(user));
        }
@@ -74,21 +87,32 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     public User updateEmployee(Long employeeId, UserDTO employeeDetails) throws Exception {
-
         User existingEmployee = userRepository.findById(employeeId).orElseThrow(
                 () -> new Exception("employee doesn't exist with given id")
         );
-        Branch branch = branchRepository.findById(employeeDetails.getBranchId())
-                .orElseThrow(
-                () -> new Exception("branch not found")
-        );
+        
+        // Update basic fields
         existingEmployee.setEmail(employeeDetails.getEmail());
         existingEmployee.setFullName(employeeDetails.getFullName());
+        existingEmployee.setPhone(employeeDetails.getPhone());
+        
+        // Update password only if provided
         if (employeeDetails.getPassword() != null && !employeeDetails.getPassword().isBlank()) {
             existingEmployee.setPassword(passwordEncoder.encode(employeeDetails.getPassword()));
         }
+        
+        // Update role
         existingEmployee.setRole(employeeDetails.getRole());
-        existingEmployee.setBranch(branch);
+        
+        // Update branch if branchId is provided
+        if (employeeDetails.getBranchId() != null) {
+            Branch branch = branchRepository.findById(employeeDetails.getBranchId())
+                    .orElseThrow(() -> new Exception("branch not found"));
+            existingEmployee.setBranch(branch);
+        } else {
+            existingEmployee.setBranch(null);
+        }
+        
         return userRepository.save(existingEmployee);
     }
 

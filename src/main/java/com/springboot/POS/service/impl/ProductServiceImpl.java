@@ -50,24 +50,21 @@ public class ProductServiceImpl implements ProductService {
                 if (productDTO.getName() != null) {
                         product.setName(productDTO.getName());
                 }
-                if (productDTO.getDesciption() != null) {
-                        product.setDesciption(productDTO.getDesciption());
-                }
                 if (productDTO.getSku() != null) {
                         product.setSku(productDTO.getSku());
                 }
-                if (productDTO.getImage() != null) {
-                        product.setImage(productDTO.getImage()); // was product.getImage() — BUG FIXED
+                if (productDTO.getImage() != null && !productDTO.getImage().isEmpty()) {
+                        System.out.println("📸 Updating image, length: " + productDTO.getImage().length());
+                        product.setImage(productDTO.getImage());
                 }
                 if (productDTO.getMrp() != null) {
-                        product.setMrp(productDTO.getMrp()); // was product.getMrp() — BUG FIXED
+                        product.setMrp(productDTO.getMrp());
                 }
                 if (productDTO.getSellingPrice() != null) {
-                        product.setSellingPrice(productDTO.getSellingPrice()); // was product.getSellingPrice() — BUG
-                                                                               // FIXED
+                        product.setSellingPrice(productDTO.getSellingPrice());
                 }
                 if (productDTO.getBrand() != null) {
-                        product.setBrand(productDTO.getBrand()); // was product.getBrand() — BUG FIXED
+                        product.setBrand(productDTO.getBrand());
                 }
                 product.setUpdatedAt(LocalDateTime.now());
 
@@ -78,6 +75,7 @@ public class ProductServiceImpl implements ProductService {
                 }
 
                 Product savedProduct = productRepository.save(product);
+                System.out.println("💾 Saved product image length: " + (savedProduct.getImage() != null ? savedProduct.getImage().length() : "null"));
                 return ProductMapper.toDTO(savedProduct);
         }
 

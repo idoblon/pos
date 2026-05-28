@@ -45,7 +45,9 @@ public class Store {
 
     @PrePersist
     protected void onCreate(){
-        status = StoreStatus.PENDING;
+        if (status == null) {
+            status = StoreStatus.PENDING;
+        }
     }
 
 }

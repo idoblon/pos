@@ -2,7 +2,7 @@ package com.springboot.POS.service.impl;
 
 import com.springboot.POS.modal.User;
 import com.springboot.POS.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,15 +14,13 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Service
+@RequiredArgsConstructor
 public class CustomerUserImplementation implements UserDetailsService {
 
-    @Autowired
-    private UserRepository userRepository;
-
+    private final UserRepository userRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-
         User user = userRepository.findByEmail(username);
         if(user == null){
             throw new UsernameNotFoundException("user not found");
@@ -34,7 +32,7 @@ public class CustomerUserImplementation implements UserDetailsService {
                 Collections.singleton(authority);
 
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),user.getPassword(), authorities
+                user.getEmail(), user.getPassword(), authorities
         );
     }
 }

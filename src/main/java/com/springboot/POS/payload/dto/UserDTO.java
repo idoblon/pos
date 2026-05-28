@@ -30,6 +30,11 @@ public class UserDTO {
     private Long StoreId;
 
     private String storeName;
+    private String storeDescription;
+    private String storeType;
+    private String storeEmail;
+    private String storePhone;
+    private String storeAddress;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

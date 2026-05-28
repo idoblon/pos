@@ -37,10 +37,18 @@ public class Branch {
     private Boolean deleted = false;
 
     @ManyToOne
+    @JoinColumn(name = "store_id")
     private Store store;
 
     @OneToOne(cascade = CascadeType.REMOVE)
-    private  User manager;
+    @JoinColumn(name = "manager_id")
+    private User manager;
 
+    @PrePersist
+    public void prePersist() {
+        if (this.deleted == null) {
+            this.deleted = false;
+        }
+    }
 
 }

@@ -1,10 +1,12 @@
 package com.springboot.POS.service.impl;
 
 import com.springboot.POS.configuration.JwtProvider;
+import com.springboot.POS.domain.StoreStatus;
 import com.springboot.POS.domain.UserRole;
 import com.springboot.POS.exceptions.UserException;
 import com.springboot.POS.mapper.UserMapper;
 import com.springboot.POS.modal.Store;
+import com.springboot.POS.modal.StoreContact;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.UserDTO;
 import com.springboot.POS.payload.response.AuthResponse;
@@ -29,10 +31,10 @@ import java.util.List;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final StoreRepository storeRepository; // ✅ ADD THIS
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
-    private final CustomerUserImplementation customeUserImplementation;
+    private final CustomerUserImplementation customerUserImplementation;
 
     @Override
     public AuthResponse signup(UserDTO userDto) throws UserException {
@@ -46,52 +48,64 @@ public class AuthServiceImpl implements AuthService {
         if (user != null){
             throw new UserException("email id already registered ! ");
         }
-        if (userDto.getRole().equals(UserRole.ROLE_ADMIN)) {
-            throw new UserException("role admin is not allowed !");
+        
+        // Only STORE_ADMIN can signup directly
+        if (!userDto.getRole().equals(UserRole.ROLE_STORE_ADMIN)) {
+            throw new UserException("Only store admin can signup. Other roles must be added by admin through employee management.");
         }
 
-        // ✅ CREATE STORE FOR STORE_ADMIN FIRST
-        Store store = null;
-        if (userDto.getRole().equals(UserRole.ROLE_STORE_ADMIN) ||
-                userDto.getRole().equals(UserRole.ROLE_STORE_MANAGER)) {
-
-            if (userDto.getStoreName() == null || userDto.getStoreName().isBlank()) {
-                throw new UserException("Store name is required for store admin");
-            }
-
-            // Create new store
-            store = new Store();
-            store.setBrand(userDto.getStoreName());
-            store.setCreatedAt(LocalDateTime.now());
-            store.setUpdatedAt(LocalDateTime.now());
-
-            // Save store first (without storeAdmin reference yet)
-            store = storeRepository.save(store);
+        if (userDto.getStoreName() == null || userDto.getStoreName().isBlank()) {
+            throw new UserException("Store name is required for store admin");
         }
 
-        // ✅ CREATE USER AND LINK TO STORE
+        //  CREATE STORE FOR STORE_ADMIN WITH FULL DETAILS
+        Store store = new Store();
+        store.setBrand(userDto.getStoreName());
+        store.setDescription(userDto.getStoreDescription());
+        store.setStoreType(userDto.getStoreType() != null && !userDto.getStoreType().isBlank() 
+                ? userDto.getStoreType() : "RETAIL");
+        store.setStatus(StoreStatus.ACTIVE);
+
+        // Set store contact information
+        StoreContact contact = store.getContact();
+        if (contact == null) {
+            contact = new StoreContact();
+        }
+        // Use store email if provided, otherwise use user email
+        if (userDto.getStoreEmail() != null && !userDto.getStoreEmail().isBlank()) {
+            contact.setEmail(userDto.getStoreEmail());
+        } else {
+            contact.setEmail(userDto.getEmail());
+        }
+        if (userDto.getStorePhone() != null && !userDto.getStorePhone().isBlank()) {
+            contact.setPhone(userDto.getStorePhone());
+        } else if (userDto.getPhone() != null && !userDto.getPhone().isBlank()) {
+            contact.setPhone(userDto.getPhone());
+        }
+        if (userDto.getStoreAddress() != null && !userDto.getStoreAddress().isBlank()) {
+            contact.setAddress(userDto.getStoreAddress());
+        }
+        store.setContact(contact);
+
+        // Save store first (without storeAdmin reference yet)
+        store = storeRepository.save(store);
+        storeRepository.flush(); // Ensure store is persisted with ID
+
+        //  CREATE USER AND LINK TO STORE
         User newUser = new User();
         newUser.setEmail(userDto.getEmail());
         newUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
-        newUser.setRole(userDto.getRole());
+        newUser.setRole(UserRole.ROLE_STORE_ADMIN);
         newUser.setFullName(userDto.getFullName());
         newUser.setPhone(userDto.getPhone());
         newUser.setLastLogin(LocalDateTime.now());
-        newUser.setCreatedAt(LocalDateTime.now());
-        newUser.setUpdatedAt(LocalDateTime.now());
-
-        // Link user to store
-        if (store != null) {
-            newUser.setStore(store);
-        }
+        newUser.setStore(store);
 
         User savedUser = userRepository.save(newUser);
 
-        // ✅ UPDATE STORE WITH STORE_ADMIN REFERENCE
-        if (store != null) {
-            store.setStoreAdmin(savedUser);
-            storeRepository.save(store);
-        }
+        // UPDATE STORE WITH STORE_ADMIN REFERENCE
+        store.setStoreAdmin(savedUser);
+        storeRepository.save(store);
 
         Authentication authentication =
                 new UsernamePasswordAuthenticationToken(userDto.getEmail(),
@@ -101,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
         String jwt = jwtProvider.generateToken(authentication);
 
-        // ✅ BUILD RESPONSE WITH STORE INFO
+        //  BUILD RESPONSE WITH STORE INFO
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);
         authResponse.setMessage("Registered Successfully");
@@ -129,7 +143,7 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
-        // ✅ BUILD RESPONSE WITH STORE INFO
+        //  BUILD RESPONSE WITH STORE INFO
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);
         authResponse.setMessage("Login Successfully");
@@ -155,7 +169,7 @@ public class AuthServiceImpl implements AuthService {
         );
         String newJwt = jwtProvider.generateToken(authentication);
 
-        // ✅ BUILD RESPONSE WITH STORE INFO
+        //  BUILD RESPONSE WITH STORE INFO
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(newJwt);
         authResponse.setMessage("Token refreshed successfully");
@@ -169,7 +183,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private Authentication authenticate(String email, String password) throws UserException {
-        UserDetails userDetails = customeUserImplementation.loadUserByUsername(email);
+        UserDetails userDetails = customerUserImplementation.loadUserByUsername(email);
 
         if( userDetails == null ){
             throw  new UserException("email id doesn't exist" + email);

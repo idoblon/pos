@@ -23,18 +23,18 @@ public class Product {
     @Column(nullable = false)
     private String sku;
 
-    private String desciption;
-
     private Double mrp;
 
     private Double sellingPrice;
 
     private String brand;
+    
+    @Column(columnDefinition = "TEXT")
     private String image;
 
     private Boolean deleted = false;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -50,6 +50,11 @@ public class Product {
     @org.hibernate.annotations.UpdateTimestamp
     private LocalDateTime updatedAt;
 
-
+    @PrePersist
+    public void prePersist() {
+        if (this.deleted == null) {
+            this.deleted = false;
+        }
+    }
 
 }
