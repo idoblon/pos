@@ -24,6 +24,8 @@ public class ProductDTO {
     @NotBlank(message = "SKU is required")
     private String sku;
 
+    private String description;
+
     @Positive(message = "MRP must be positive")
     private Double mrp;
 

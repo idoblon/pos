@@ -121,4 +121,79 @@ public class EmailServiceImpl implements EmailService {
         ));
         mailSender.send(message);
     }
+
+    @Override
+    public void sendRestockRequestEmail(String toEmail, String toName, String branchName, String productName, Integer requestedQty, Integer currentStock) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("New Restock Request - " + branchName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "A new restock request has been submitted.\n\n" +
+            "Branch: %s\n" +
+            "Product: %s\n" +
+            "Current Stock: %d\n" +
+            "Requested Quantity: %d\n\n" +
+            "Please review and approve/reject this request in the system.\n\n" +
+            "Best regards,\nPOS System",
+            toName, branchName, productName, currentStock, requestedQty
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendRestockApprovedEmail(String toEmail, String toName, String productName, Integer approvedQty) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Restock Request Approved - " + productName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your restock request has been approved!\n\n" +
+            "Product: %s\n" +
+            "Approved Quantity: %d\n\n" +
+            "The stock will be delivered to your branch soon.\n\n" +
+            "Best regards,\nPOS System",
+            toName, productName, approvedQty
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendRestockRejectedEmail(String toEmail, String toName, String productName, String reason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Restock Request Rejected - " + productName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your restock request has been rejected.\n\n" +
+            "Product: %s\n" +
+            "Reason: %s\n\n" +
+            "Please contact your store manager for more information.\n\n" +
+            "Best regards,\nPOS System",
+            toName, productName, reason
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendRestockFulfilledEmail(String toEmail, String toName, String productName, Integer fulfilledQty, Integer newStock) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Restock Fulfilled - " + productName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your restock request has been fulfilled!\n\n" +
+            "Product: %s\n" +
+            "Quantity Added: %d\n" +
+            "New Stock Level: %d\n\n" +
+            "The inventory has been updated in your branch.\n\n" +
+            "Best regards,\nPOS System",
+            toName, productName, fulfilledQty, newStock
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
 }

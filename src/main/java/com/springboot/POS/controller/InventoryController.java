@@ -39,6 +39,15 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.updateInventory(id, inventoryDTO));
     }
 
+    @PatchMapping("/{id}/stock")
+    public ResponseEntity<InventoryDTO> updateStock(
+            @PathVariable Long id,
+            @RequestBody InventoryDTO inventoryDTO,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        return ResponseEntity.ok(inventoryService.updateStock(id, inventoryDTO.getQuantity()));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse> delete(
             @PathVariable Long id,
@@ -59,6 +68,15 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getAllInventoryByBranchId(branchId));
     }
 
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<List<InventoryDTO>> getInventoryByStore(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+        return ResponseEntity.ok(inventoryService.getAllInventoryByStoreId(storeId));
+    }
+
     @GetMapping("/branch/{branchId}/product/{productId}")
     public ResponseEntity<List<InventoryDTO>> getInventoryByProductAndBranchId(
             @PathVariable Long branchId,
@@ -77,5 +95,15 @@ public class InventoryController {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireBranchAccess(user, branchId);
         return ResponseEntity.ok(inventoryService.getLowStockItems(branchId, threshold));
+    }
+
+    @GetMapping("/store/{storeId}/low-stock")
+    public ResponseEntity<List<InventoryDTO>> getLowStockByStore(
+            @PathVariable Long storeId,
+            @RequestParam(defaultValue = "10") int threshold,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+        return ResponseEntity.ok(inventoryService.getLowStockItemsByStore(storeId, threshold));
     }
 }

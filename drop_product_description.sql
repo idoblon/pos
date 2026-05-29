@@ -1,5 +1,4 @@
--- Drop both description columns from product table
-ALTER TABLE product DROP COLUMN description;
+-- Drop the misspelled column and keep the correct one
 ALTER TABLE product DROP COLUMN desciption;
 
 -- Verify the change

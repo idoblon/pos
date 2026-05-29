@@ -9,4 +9,10 @@ public interface EmailService {
     void sendOrderConfirmationEmail(EmailRequest request);
     void sendRefundConfirmationEmail(EmailRequest request);
     void sendShiftReportEmail(EmailRequest request);
+    
+    // Restock request emails
+    void sendRestockRequestEmail(String toEmail, String toName, String branchName, String productName, Integer requestedQty, Integer currentStock);
+    void sendRestockApprovedEmail(String toEmail, String toName, String productName, Integer approvedQty);
+    void sendRestockRejectedEmail(String toEmail, String toName, String productName, String reason);
+    void sendRestockFulfilledEmail(String toEmail, String toName, String productName, Integer fulfilledQty, Integer newStock);
 }

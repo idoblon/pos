@@ -23,6 +23,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final BranchRepository branchRepository;
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
+    private final StockMovementService stockMovementService;
 
 
     @Override
@@ -35,7 +36,11 @@ public class InventoryServiceImpl implements InventoryService {
                 () -> new Exception("product doesn't exist....")
         );
 
-        Inventory inventory = InventoryMapper.toEntity(inventoryDTO,branch,product);
+        Inventory inventory = Inventory.builder()
+                .branch(branch)
+                .product(product)
+                .quantity(inventoryDTO.getQuantity())
+                .build();
         Inventory savedInventory = inventoryRepository.save(inventory);
         return InventoryMapper.toDTO(savedInventory);
     }
@@ -43,8 +48,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public InventoryDTO updateInventory(Long id, InventoryDTO inventoryDTO) throws Exception {
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
-                () -> new Exception("inventory not found....")
-        );
+                () -> new Exception("inventory not found...."));
         inventory.setQuantity(inventoryDTO.getQuantity());
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
@@ -52,18 +56,25 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public InventoryDTO updateStock(Long id, Integer quantity) throws Exception {
+        Inventory inventory = inventoryRepository.findById(id).orElseThrow(
+                () -> new Exception("inventory not found...."));
+        inventory.setQuantity(quantity);
+        Inventory updatedInventory = inventoryRepository.save(inventory);
+        return InventoryMapper.toDTO(updatedInventory);
+    }
+
+    @Override
     public void deleteInventory(Long id) throws Exception {
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
-                () -> new Exception("inventory not found....")
-        );
+                () -> new Exception("inventory not found...."));
         inventoryRepository.delete(inventory);
     }
 
     @Override
     public InventoryDTO getInventoryById(Long id) throws Exception {
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
-                () -> new Exception("inventory not found....")
-        );
+                () -> new Exception("inventory not found...."));
         return InventoryMapper.toDTO(inventory);
     }
 
@@ -84,6 +95,14 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    public List<InventoryDTO> getAllInventoryByStoreId(Long storeId) {
+        List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
+        return inventories.stream()
+                .map(InventoryMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public void deductStock(Long productId, Long branchId, int quantity) throws Exception {
         Inventory inventory = inventoryRepository
@@ -101,9 +120,27 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional
+    public void addStock(Long productId, Long branchId, int quantity) throws Exception {
+        Inventory inventory = inventoryRepository
+                .findByProductIdAndBranchIdWithLock(productId, branchId)
+                .orElseThrow(() -> new Exception("Product not found in branch inventory"));
+
+        inventory.setQuantity(inventory.getQuantity() + quantity);
+        inventoryRepository.save(inventory);
+    }
+
+    @Override
     public List<InventoryDTO> getLowStockItems(Long branchId, int threshold) {
-        return inventoryRepository.findByBranchId(branchId).stream()
-                .filter(inv -> inv.getQuantity() <= threshold)
+        return inventoryRepository.findLowStockByBranch(branchId, threshold).stream()
+                .sorted(Comparator.comparingInt(Inventory::getQuantity))
+                .map(InventoryMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventoryDTO> getLowStockItemsByStore(Long storeId, int threshold) {
+        return inventoryRepository.findLowStockByStore(storeId, threshold).stream()
                 .sorted(Comparator.comparingInt(Inventory::getQuantity))
                 .map(InventoryMapper::toDTO)
                 .collect(Collectors.toList());

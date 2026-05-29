@@ -1,27 +1,31 @@
 package com.springboot.POS.mapper;
 
-import com.springboot.POS.modal.Branch;
 import com.springboot.POS.modal.Inventory;
-import com.springboot.POS.modal.Product;
 import com.springboot.POS.payload.dto.InventoryDTO;
 
 public class InventoryMapper {
-    public static InventoryDTO toDTO(Inventory inventory){
-        return InventoryDTO.builder()
+
+    private static final Integer DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
+    public static InventoryDTO toDTO(Inventory inventory) {
+        if (inventory == null) return null;
+
+        InventoryDTO dto = InventoryDTO.builder()
                 .id(inventory.getId())
-                .branchId(inventory.getBranch().getId())
-                .productId(inventory.getProduct().getId())
-                .product(ProductMapper.toDTO(inventory.getProduct()))
+                .branchId(inventory.getBranch() != null ? inventory.getBranch().getId() : null)
+                .branchName(inventory.getBranch() != null ? inventory.getBranch().getName() : null)
+                .productId(inventory.getProduct() != null ? inventory.getProduct().getId() : null)
+                .productName(inventory.getProduct() != null ? inventory.getProduct().getName() : null)
+                .productSku(inventory.getProduct() != null ? inventory.getProduct().getSku() : null)
+                .productImage(inventory.getProduct() != null ? inventory.getProduct().getImage() : null)
                 .quantity(inventory.getQuantity())
+                .lastUpdate(inventory.getLastUpdate())
+                .lowStockThreshold(DEFAULT_LOW_STOCK_THRESHOLD)
                 .build();
-    }
-    public static Inventory toEntity(InventoryDTO inventoryDTO,
-                                     Branch branch,
-                                     Product product){
-        return Inventory.builder()
-                .branch(branch)
-                .product(product)
-                .quantity(inventoryDTO.getQuantity())
-                .build();
+
+        // Calculate if low stock
+        dto.setIsLowStock(inventory.getQuantity() <= DEFAULT_LOW_STOCK_THRESHOLD);
+
+        return dto;
     }
 }

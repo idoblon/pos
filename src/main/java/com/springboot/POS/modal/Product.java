@@ -23,13 +23,16 @@ public class Product {
     @Column(nullable = false)
     private String sku;
 
+    private String description;
+
     private Double mrp;
 
     private Double sellingPrice;
 
     private String brand;
-    
-    @Column(columnDefinition = "TEXT")
+
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
     private String image;
 
     private Boolean deleted = false;

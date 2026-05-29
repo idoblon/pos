@@ -1,14 +1,9 @@
 package com.springboot.POS.service.impl;
 
 import com.springboot.POS.mapper.ProductMapper;
-import com.springboot.POS.modal.Category;
-import com.springboot.POS.modal.Product;
-import com.springboot.POS.modal.Store;
-import com.springboot.POS.modal.User;
+import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.ProductDTO;
-import com.springboot.POS.repository.CategoryRepository;
-import com.springboot.POS.repository.ProductRepository;
-import com.springboot.POS.repository.StoreRepository;
+import com.springboot.POS.repository.*;
 import com.springboot.POS.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +21,8 @@ public class ProductServiceImpl implements ProductService {
         private final ProductRepository productRepository;
         private final StoreRepository storeRepository;
         private final CategoryRepository categoryRepository;
+        private final BranchRepository branchRepository;
+        private final InventoryRepository inventoryRepository;
 
         @Override
         public ProductDTO createProduct(ProductDTO productDTO, User user) throws Exception {
@@ -39,6 +36,26 @@ public class ProductServiceImpl implements ProductService {
 
                 Product product = ProductMapper.toEntity(productDTO, store, category);
                 Product savedProduct = productRepository.save(product);
+
+                // Auto-create inventory for all branches under this store
+                List<Branch> branches = branchRepository.findByStoreIdAndDeletedFalse(store.getId());
+                for (Branch branch : branches) {
+                        // Check if inventory already exists
+                        List<Inventory> existing = inventoryRepository.findByProductIdAndBranchId(
+                                savedProduct.getId(), branch.getId());
+                        
+                        if (existing.isEmpty()) {
+                                Inventory inventory = Inventory.builder()
+                                        .product(savedProduct)
+                                        .branch(branch)
+                                        .quantity(0)
+                                        .build();
+                                inventoryRepository.save(inventory);
+                                System.out.println("✅ Created inventory for product " + savedProduct.getName() + 
+                                        " in branch " + branch.getName());
+                        }
+                }
+
                 return ProductMapper.toDTO(savedProduct);
         }
 
@@ -49,6 +66,9 @@ public class ProductServiceImpl implements ProductService {
 
                 if (productDTO.getName() != null) {
                         product.setName(productDTO.getName());
+                }
+                if (productDTO.getDescription() != null) {
+                        product.setDescription(productDTO.getDescription());
                 }
                 if (productDTO.getSku() != null) {
                         product.setSku(productDTO.getSku());
