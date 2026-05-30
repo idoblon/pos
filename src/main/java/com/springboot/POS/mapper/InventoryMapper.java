@@ -18,6 +18,10 @@ public class InventoryMapper {
                 .productName(inventory.getProduct() != null ? inventory.getProduct().getName() : null)
                 .productSku(inventory.getProduct() != null ? inventory.getProduct().getSku() : null)
                 .productImage(inventory.getProduct() != null ? inventory.getProduct().getImage() : null)
+                .categoryId(inventory.getProduct() != null && inventory.getProduct().getCategory() != null 
+                        ? inventory.getProduct().getCategory().getId() : null)
+                .categoryName(inventory.getProduct() != null && inventory.getProduct().getCategory() != null 
+                        ? inventory.getProduct().getCategory().getName() : null)
                 .quantity(inventory.getQuantity())
                 .lastUpdate(inventory.getLastUpdate())
                 .lowStockThreshold(DEFAULT_LOW_STOCK_THRESHOLD)

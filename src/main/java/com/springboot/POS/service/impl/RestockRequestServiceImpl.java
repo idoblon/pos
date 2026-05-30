@@ -7,6 +7,7 @@ import com.springboot.POS.payload.dto.RestockRequestDTO;
 import com.springboot.POS.repository.*;
 import com.springboot.POS.service.EmailService;
 import com.springboot.POS.service.RestockRequestService;
+import com.springboot.POS.service.StockMovementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -23,6 +23,8 @@ public class Customer {
 
     private String phone;
 
+    private String address;
+
     @Column(name = "created_at")
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
@@ -30,4 +32,7 @@ public class Customer {
     @Column(name = "updated_at")
     @org.hibernate.annotations.UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Transient
+    private Long totalOrders;
 }

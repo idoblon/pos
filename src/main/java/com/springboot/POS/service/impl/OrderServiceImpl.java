@@ -5,6 +5,7 @@ import com.springboot.POS.domain.PaymentType;
 import com.springboot.POS.mapper.OrderMapper;
 import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.OrderDTO;
+import com.springboot.POS.repository.CustomerRepository;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
@@ -29,6 +30,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final InventoryService inventoryService;
+    private final CustomerRepository customerRepository;
 
     @Override
     @Transactional
@@ -39,11 +41,21 @@ public class OrderServiceImpl implements OrderService {
         if(branch == null){
             throw new Exception("cashier's branch not found");
         }
+        // Resolve customer by ID if provided
+        Customer customer = null;
+        if (orderDTO.getCustomerId() != null) {
+            customer = customerRepository.findById(orderDTO.getCustomerId()).orElse(null);
+        }
+
+        // Resolve paymentType — frontend sends either paymentType or paymentMethod
+        PaymentType paymentType = orderDTO.getPaymentType();
+
         Order order = Order.builder()
                 .branch(branch)
                 .cashier(cashier)
-                .customer(orderDTO.getCustomer())
-                .paymentType(orderDTO.getPaymentType())
+                .customer(customer)
+                .paymentType(paymentType)
+                .status(OrderStatus.COMPLETED)
                 .build();
 
 

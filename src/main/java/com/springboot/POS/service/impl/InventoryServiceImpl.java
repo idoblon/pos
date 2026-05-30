@@ -9,6 +9,7 @@ import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.repository.InventoryRepository;
 import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
+import com.springboot.POS.service.StockMovementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

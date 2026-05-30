@@ -28,6 +28,8 @@ public class InventoryDTO {
     private String productName;
     private String productSku;
     private String productImage;
+    private Long categoryId;
+    private String categoryName;
 
     @NotNull(message = "Quantity is required")
     @Min(value = 0, message = "Quantity cannot be negative")

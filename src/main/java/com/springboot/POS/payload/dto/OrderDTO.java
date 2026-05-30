@@ -25,6 +25,17 @@ public class OrderDTO {
     private UserDTO cashier;
     private Customer customer;
     private PaymentType paymentType;
+    private String paymentMethod; // frontend sends paymentMethod as string
     private OrderStatus status;
     private List<OrderItemDTO> items;
+
+    // Resolve paymentType from either paymentType or paymentMethod string
+    public PaymentType getPaymentType() {
+        if (paymentType != null) return paymentType;
+        if (paymentMethod != null) {
+            try { return PaymentType.valueOf(paymentMethod.toUpperCase()); }
+            catch (IllegalArgumentException ignored) {}
+        }
+        return null;
+    }
 }
