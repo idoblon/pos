@@ -13,4 +13,5 @@ public interface UserService {
     User getUserById(Long id) throws UserException, Exception;
     List<User> getAllUser();
     User updateUser(Long id, UserDTO userDTO) throws Exception;
+    void updatePassword(String currentPassword, String newPassword) throws Exception;
 }

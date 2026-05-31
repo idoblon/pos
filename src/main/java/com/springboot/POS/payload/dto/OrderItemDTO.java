@@ -16,6 +16,8 @@ public class OrderItemDTO {
     private ProductDTO product;
 
     private Long productId;
-
     private Long orderId;
+
+    private Double unitPrice;
+
 }

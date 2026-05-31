@@ -3,11 +3,13 @@ package com.springboot.POS.service.impl;
 import com.springboot.POS.mapper.RefundMapper;
 import com.springboot.POS.modal.Branch;
 import com.springboot.POS.modal.Order;
+import com.springboot.POS.modal.OrderItem;
 import com.springboot.POS.modal.Refund;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.RefundDTO;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.RefundRepository;
+import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.RefundService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class RefundServiceImpl implements RefundService {
     private final UserService userService;
     private final OrderRepository orderRepository;
     private final RefundRepository refundRepository;
+    private final InventoryService inventoryService;
 
     @Override
     public RefundDTO createRefund(RefundDTO refund) throws Exception {
@@ -59,6 +62,22 @@ public class RefundServiceImpl implements RefundService {
                 .build();
 
         Refund savedRefund = refundRepository.save(createdRefund);
+        
+        // Restore inventory for all items in the order (full refund)
+        for (OrderItem item : order.getItems()) {
+            try {
+                inventoryService.addStock(
+                    item.getProduct().getId(), 
+                    branch.getId(), 
+                    item.getQuantity()
+                );
+            } catch (Exception e) {
+                // Log error but don't fail the refund
+                System.err.println("Failed to restore inventory for product " + 
+                    item.getProduct().getId() + ": " + e.getMessage());
+            }
+        }
+        
         return RefundMapper.toDTO(savedRefund);
     }
 

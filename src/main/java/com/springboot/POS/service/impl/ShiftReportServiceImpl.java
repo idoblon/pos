@@ -31,17 +31,18 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     @Override
     public ShiftReportDTO startShift(Double openingFloat) throws Exception {
         User currentUser = userService.getCurrentUser();
-        LocalDateTime shiftStart = LocalDateTime.now();
-
-        LocalDateTime startOfDay = shiftStart.withHour(0).withMinute(0).withSecond(0);
-        LocalDateTime endOfDay = shiftStart.withHour(23).withMinute(59).withSecond(59);
-
-        Optional<ShiftReport> existing = shiftReportRepository.findByCashierAndShiftStartBetween(
-                currentUser, startOfDay, endOfDay
-        );
-        if (existing.isPresent()) {
-            throw new Exception("Shift already started today");
+        
+        // Check if there's already an active shift (not ended)
+        Optional<ShiftReport> activeShift = shiftReportRepository
+                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(currentUser);
+        
+        if (activeShift.isPresent()) {
+            // Return existing active shift instead of throwing error
+            return ShiftReportMapper.toDTO(activeShift.get());
         }
+        
+        // No active shift, create a new one
+        LocalDateTime shiftStart = LocalDateTime.now();
         Branch branch = currentUser.getBranch();
 
         ShiftReport shiftReport = ShiftReport.builder()
@@ -193,9 +194,10 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public ShiftReportDTO getCurrentShiftReportProgress() throws Exception {
         User user = userService.getCurrentUser();
 
-        ShiftReport shiftReport = shiftReportRepository
-                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user)
-                .orElseThrow(() -> new Exception("no active shift found for cashier"));
+        Optional<ShiftReport> optional = shiftReportRepository
+                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user);
+        if (optional.isEmpty()) return null;
+        ShiftReport shiftReport = optional.get();
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -243,6 +245,9 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     private List<PaymentSummary> getPaymentSummaries(List<Order> orders,
                                                      double totalSales) {
+        if (orders == null || orders.isEmpty()) {
+            return new ArrayList<>();
+        }
         Map<PaymentType, List<Order>> grouped = orders.stream()
                 .collect(Collectors.groupingBy(order ->order.getPaymentType()!=null?
                         order.getPaymentType():PaymentType.CASH));
@@ -253,7 +258,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                     .mapToDouble(Order::getTotalAmount).sum();
 
             int transactions = entry.getValue().size();
-            double percent = (amount/totalSales)*100;
+            double percent = totalSales > 0 ? (amount/totalSales)*100 : 0.0;
 
             PaymentSummary ps = new PaymentSummary();
             ps.setType(entry.getKey());

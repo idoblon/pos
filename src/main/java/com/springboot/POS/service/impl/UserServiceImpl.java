@@ -10,6 +10,7 @@ import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final BranchRepository branchRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public User getUserFromJwtToken(String token) throws UserException {
@@ -76,5 +78,24 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<User> getAllUser() {
         return userRepository.findAll();
+    }
+
+    @Override
+    public void updatePassword(String currentPassword, String newPassword) throws Exception {
+        User user = getCurrentUser();
+        
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new Exception("Current password is incorrect");
+        }
+        
+        // Validate new password
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new Exception("New password must be at least 6 characters long");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }

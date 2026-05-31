@@ -23,6 +23,12 @@ public class Order {
 
     private Double totalAmount;
 
+    private Double taxAmount;
+
+    private Double discount;
+
+    private String discountType;
+
     @Column(name = "created_at")
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;

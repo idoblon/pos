@@ -18,6 +18,9 @@ public class OrderDTO {
 
     private Long id;
     private Double totalAmount;
+    private Double taxAmount;
+    private Double discount;
+    private String discountType;
     private LocalDateTime createdAt;
     private Long branchId;
     private Long customerId;

@@ -71,11 +71,13 @@ public class OrderServiceImpl implements OrderService {
                     }
 
                     // Always recalculate from current DB price — never trust frontend price
-                    double lineTotal = product.getSellingPrice() * itemDTO.getQuantity();
+                    double unitPrice = product.getSellingPrice();
+                    double lineTotal = unitPrice * itemDTO.getQuantity();
 
                     return OrderItem.builder()
                             .product(product)
                             .quantity(itemDTO.getQuantity())
+                            .unitPrice(unitPrice)
                             .price(lineTotal)
                             .order(order)
                             .build();
@@ -85,7 +87,22 @@ public class OrderServiceImpl implements OrderService {
         double recalculatedTotal = orderItems.stream()
                 .mapToDouble(OrderItem::getPrice).sum();
 
-        order.setTotalAmount(recalculatedTotal);
+        double taxAmount = recalculatedTotal * 0.13;
+        
+        // Apply discount
+        double discountAmount = 0.0;
+        if (orderDTO.getDiscount() != null && orderDTO.getDiscount() > 0) {
+            if ("percentage".equalsIgnoreCase(orderDTO.getDiscountType())) {
+                discountAmount = recalculatedTotal * (orderDTO.getDiscount() / 100);
+            } else {
+                discountAmount = orderDTO.getDiscount();
+            }
+        }
+
+        order.setTotalAmount(recalculatedTotal + taxAmount - discountAmount);
+        order.setTaxAmount(taxAmount);
+        order.setDiscount(orderDTO.getDiscount());
+        order.setDiscountType(orderDTO.getDiscountType());
         order.setItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);

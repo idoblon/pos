@@ -19,6 +19,8 @@ public class OrderItem {
 
     private Double price;
 
+    private Double unitPrice;
+
     @ManyToOne
     private Product product;
 

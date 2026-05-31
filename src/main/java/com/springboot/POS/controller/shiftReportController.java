@@ -34,9 +34,8 @@ public class shiftReportController {
     }
     @GetMapping("/current")
     public ResponseEntity<ShiftReportDTO> getCurrentShiftProgress() throws Exception {
-        return ResponseEntity.ok(
-                shiftReportService.getCurrentShiftReportProgress()
-        );
+        ShiftReportDTO dto = shiftReportService.getCurrentShiftReportProgress();
+        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.noContent().build();
     }
     @GetMapping("/cashier/{cashierId}/by-date")
     public ResponseEntity<ShiftReportDTO> getShiftReportByDate(

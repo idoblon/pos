@@ -48,4 +48,23 @@ public class UserController {
         List<User> users = userService.getAllUser();
         return ResponseEntity.ok(users);
     }
+    
+    @PutMapping("/api/users/update-password")
+    public ResponseEntity<String> updatePassword(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody UpdatePasswordRequest request) throws Exception {
+        userService.updatePassword(request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok("Password updated successfully");
+    }
+    
+    // Inner class for password update request
+    public static class UpdatePasswordRequest {
+        private String currentPassword;
+        private String newPassword;
+        
+        public String getCurrentPassword() { return currentPassword; }
+        public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
+        public String getNewPassword() { return newPassword; }
+        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    }
 }
