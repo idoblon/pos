@@ -16,6 +16,7 @@ public class RestockRequestMapper {
                 .productName(request.getProduct() != null ? request.getProduct().getName() : null)
                 .productSku(request.getProduct() != null ? request.getProduct().getSku() : null)
                 .requestedQuantity(request.getRequestedQuantity())
+                .receivedQuantity(request.getReceivedQuantity())
                 .currentStock(request.getCurrentStock())
                 .status(request.getStatus())
                 .notes(request.getNotes())

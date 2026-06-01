@@ -26,10 +26,14 @@ public class JwtValidator extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
                 String jwt = request.getHeader(JwtConstant.JWT_HEADER);
-
+                String requestURI = request.getRequestURI();
+                
+                System.out.println("🔍 JWT DEBUG - Request URI: " + requestURI);
+                System.out.println("🔍 JWT DEBUG - JWT Header present: " + (jwt != null));
+                
                 //Bearer jwt
-
                 if(jwt != null){
+                    System.out.println("🔍 JWT DEBUG - JWT Header value: " + jwt.substring(0, Math.min(jwt.length(), 20)) + "...");
                     jwt = jwt.substring(7);
                     try{
                         SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
@@ -41,6 +45,9 @@ public class JwtValidator extends OncePerRequestFilter {
 
                         String email = String.valueOf(claims.get("email"));
                         String authorities = String.valueOf(claims.get("authorities"));
+                        
+                        System.out.println("✅ JWT DEBUG - JWT validation successful for: " + email);
+                        System.out.println("🔍 JWT DEBUG - Authorities: " + authorities);
 
                         List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
                                 authorities
@@ -52,8 +59,12 @@ public class JwtValidator extends OncePerRequestFilter {
 
                     }
                     catch(Exception e){
+                        System.err.println("❌ JWT DEBUG - JWT validation failed: " + e.getMessage());
+                        e.printStackTrace();
                         throw new BadCredentialsException("Invalid JWT....");
                     }
+                } else {
+                    System.out.println("⚠️ JWT DEBUG - No JWT header found for: " + requestURI);
                 }
 
                 filterChain.doFilter(request,response);

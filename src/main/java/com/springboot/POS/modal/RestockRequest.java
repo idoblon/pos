@@ -33,6 +33,7 @@ public class RestockRequest {
     private User requestedBy;
 
     private Integer requestedQuantity;
+    private Integer receivedQuantity; // Actual quantity received (may differ from requested)
     private Integer currentStock;
 
     @Enumerated(EnumType.STRING)

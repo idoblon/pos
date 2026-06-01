@@ -33,6 +33,8 @@ public class RestockRequestDTO {
     @Positive(message = "Requested quantity must be positive")
     private Integer requestedQuantity;
 
+    private Integer receivedQuantity; // Actual quantity received during fulfillment
+
     private Integer currentStock;
     private RestockStatus status;
     private String notes;

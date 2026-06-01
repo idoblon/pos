@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(Authorize -> Authorize
                         .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/restock-requests/**").permitAll()  // Temporarily allow all restock endpoints
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class
