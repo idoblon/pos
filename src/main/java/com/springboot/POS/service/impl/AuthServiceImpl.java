@@ -49,6 +49,41 @@ public class AuthServiceImpl implements AuthService {
             throw new UserException("email id already registered ! ");
         }
         
+        // Allow ROLE_ADMIN signup directly (hardcoded admin credentials)
+        if (userDto.getRole().equals(UserRole.ROLE_ADMIN)) {
+            // Create ROLE_ADMIN user directly without store requirements
+            User newUser = new User();
+            newUser.setEmail(userDto.getEmail());
+            newUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
+            newUser.setRole(UserRole.ROLE_ADMIN);
+            newUser.setFullName(userDto.getFullName());
+            newUser.setPhone(userDto.getPhone());
+            newUser.setLastLogin(LocalDateTime.now());
+            // Admin doesn't need a store
+            newUser.setStore(null);
+
+            User savedUser = userRepository.save(newUser);
+
+            Authentication authentication =
+                    new UsernamePasswordAuthenticationToken(userDto.getEmail(),
+                            userDto.getPassword());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            String jwt = jwtProvider.generateToken(authentication);
+
+            AuthResponse authResponse = new AuthResponse();
+            authResponse.setJwt(jwt);
+            authResponse.setMessage("Admin Registered Successfully");
+            authResponse.setUser(UserMapper.toDTO(savedUser));
+            authResponse.setRole(savedUser.getRole());
+            authResponse.setStoreId(null);
+            authResponse.setBranchId(null);
+            authResponse.setStoreName("POS System Administration");
+
+            return authResponse;
+        }
+        
         // Only STORE_ADMIN can signup directly
         if (!userDto.getRole().equals(UserRole.ROLE_STORE_ADMIN)) {
             throw new UserException("Only store admin can signup. Other roles must be added by admin through employee management.");
