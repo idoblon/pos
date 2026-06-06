@@ -44,8 +44,16 @@ public class StoreRegistrationRequest {
     @Column(nullable = false)
     private String subscriptionPlan; // BASIC, PROFESSIONAL, ENTERPRISE
     
+    private Double subscriptionAmount; // Amount for the selected plan
+    
+    private String paymentStatus = "PENDING"; // PENDING, COMPLETED, FAILED
+    
+    private String paymentMethod; // ESEWA, KHALTI, BANK_TRANSFER
+    
+    private String transactionId;
+    
     @Column(nullable = false)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+    private String status = "PENDING"; // PENDING, PAYMENT_PENDING, APPROVED, REJECTED
     
     @Column(columnDefinition = "TEXT")
     private String rejectionReason;

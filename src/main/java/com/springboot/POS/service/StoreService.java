@@ -11,6 +11,7 @@ import java.util.List;
 public interface StoreService {
 
     StoreDTO createStore(StoreDTO storeDTO, User user);
+    Store createStoreFromRegistration(String storeName, String description, String address, String phone, String storeType);
     StoreDTO getStoreById(Long id) throws Exception;
     List<Store> getAllStores();
     Store getStoreByAdmin() throws UserException;

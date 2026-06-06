@@ -15,4 +15,9 @@ public interface EmailService {
     void sendRestockApprovedEmail(String toEmail, String toName, String productName, Integer approvedQty);
     void sendRestockRejectedEmail(String toEmail, String toName, String productName, String reason);
     void sendRestockFulfilledEmail(String toEmail, String toName, String productName, Integer fulfilledQty, Integer newStock);
+    
+    // Store registration emails
+    void sendStoreRegistrationNotification(String adminEmail, String storeName, String ownerName, String ownerEmail, String subscriptionPlan);
+    void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail, String tempPassword);
+    void sendStoreRegistrationRejected(String applicantEmail, String ownerName, String storeName, String rejectionReason);
 }

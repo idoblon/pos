@@ -176,4 +176,22 @@ public class StoreServiceImpl implements StoreService {
         Store updatedStore = storeRepository.save(store);
         return StoreMapper.toDTO(updatedStore);
     }
+
+    @Override
+    public Store createStoreFromRegistration(String storeName, String description, String address, String phone, String storeType) {
+        Store store = new Store();
+        store.setBrand(storeName);
+        store.setDescription(description);
+        store.setStoreType(storeType);
+        store.setStatus(StoreStatus.ACTIVE);
+        
+        // Set contact information
+        StoreContact contact = StoreContact.builder()
+                .address(address)
+                .phone(phone)
+                .build();
+        store.setContact(contact);
+        
+        return storeRepository.save(store);
+    }
 }

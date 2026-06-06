@@ -1,6 +1,7 @@
 package com.springboot.POS.service;
 
 import com.springboot.POS.exceptions.UserException;
+import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.UserDTO;
 
@@ -14,4 +15,5 @@ public interface UserService {
     List<User> getAllUser();
     User updateUser(Long id, UserDTO userDTO) throws Exception;
     void updatePassword(String currentPassword, String newPassword) throws Exception;
+    User createStoreAdmin(String fullName, String email, String password, Store store);
 }

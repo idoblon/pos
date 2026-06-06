@@ -196,4 +196,69 @@ public class EmailServiceImpl implements EmailService {
         message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);
     }
+
+    @Override
+    public void sendStoreRegistrationNotification(String adminEmail, String storeName, String ownerName, String ownerEmail, String subscriptionPlan) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(adminEmail);
+        message.setSubject("New Store Registration Request - " + storeName);
+        message.setText(String.format(
+            "Hello Admin,\n\n" +
+            "A new store registration request has been submitted.\n\n" +
+            "Store Details:\n" +
+            "Store Name: %s\n" +
+            "Owner Name: %s\n" +
+            "Owner Email: %s\n" +
+            "Subscription Plan: %s\n\n" +
+            "Please review and approve/reject this registration request in the admin panel.\n\n" +
+            "Best regards,\nPOS System",
+            storeName, ownerName, ownerEmail, subscriptionPlan
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail, String tempPassword) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Store Registration Approved - Welcome to POS System!");
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Congratulations! Your store registration request has been APPROVED.\n\n" +
+            "Store Details:\n" +
+            "Store Name: %s\n" +
+            "Status: APPROVED\n\n" +
+            "Login Credentials:\n" +
+            "Email: %s\n" +
+            "Temporary Password: %s\n\n" +
+            "IMPORTANT: Please login immediately and change your password for security.\n\n" +
+            "You can now access your POS system dashboard and start managing your store.\n\n" +
+            "Welcome to the POS System family!\n\n" +
+            "Best regards,\nPOS System Team",
+            ownerName, storeName, loginEmail, tempPassword
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendStoreRegistrationRejected(String applicantEmail, String ownerName, String storeName, String rejectionReason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Store Registration Update - " + storeName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Thank you for your interest in our POS System.\n\n" +
+            "Unfortunately, your store registration request for '%s' has been declined.\n\n" +
+            "Reason: %s\n\n" +
+            "If you have any questions or would like to reapply after addressing the concerns, " +
+            "please feel free to contact our support team.\n\n" +
+            "Thank you for your understanding.\n\n" +
+            "Best regards,\nPOS System Team",
+            ownerName, storeName, rejectionReason
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
 }
