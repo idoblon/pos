@@ -47,6 +47,12 @@ public class Order {
 
     private PaymentType paymentType;
 
+    // Stores the gateway reference returned from the popup (eSewa ref, Khalti token, card last-4)
+    private String paymentReference;
+
+    // CASH only: raw amount handed over by customer
+    private Double amountReceived;
+
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
 

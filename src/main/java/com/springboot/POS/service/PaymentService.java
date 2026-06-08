@@ -2,6 +2,7 @@ package com.springboot.POS.service;
 
 import com.springboot.POS.modal.SubscriptionPayment;
 import com.springboot.POS.modal.StoreRegistrationRequest;
+import com.springboot.POS.payload.dto.PaymentStatusDTO;
 
 public interface PaymentService {
     
@@ -25,4 +26,13 @@ public interface PaymentService {
     
     // Check if registration request has valid payment
     boolean hasValidPayment(Long registrationRequestId);
+    
+    // Admin method to manually mark payment as completed
+    void adminMarkPaymentCompleted(Long registrationRequestId, String adminReference, Long adminId);
+    
+    // Get comprehensive payment status for admin
+    PaymentStatusDTO getPaymentStatusForAdmin(Long registrationRequestId);
+    
+    // Check if payment can be manually completed
+    boolean canMarkPaymentCompleted(Long registrationRequestId);
 }

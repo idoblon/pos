@@ -51,15 +51,21 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
 
     @Override
     public void approveRequest(Long requestId, Long adminId) throws Exception {
+        approveRequestWithOverride(requestId, adminId, false);
+    }
+
+    @Override
+    public void approveRequestWithOverride(Long requestId, Long adminId, boolean skipPaymentCheck) throws Exception {
         StoreRegistrationRequest request = getRequestById(requestId);
         
-        if (!"PENDING".equals(request.getStatus())) {
-            throw new Exception("Request has already been processed");
+        // Validate request status
+        if (!"PENDING".equals(request.getStatus()) && !"PAYMENT_PENDING".equals(request.getStatus())) {
+            throw new Exception("Request has already been processed. Current status: " + request.getStatus());
         }
         
-        // Check if payment is completed
-        if (!paymentService.hasValidPayment(requestId)) {
-            throw new Exception("Cannot approve request: Payment not completed. Please ensure the user has completed the subscription payment.");
+        // Check payment only if not overridden
+        if (!skipPaymentCheck && !paymentService.hasValidPayment(requestId)) {
+            throw new Exception("Cannot approve request: Payment not completed. Please ensure the user has completed the subscription payment or use the payment override option.");
         }
 
         try {
@@ -109,7 +115,10 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
             );
             
         } catch (Exception e) {
-            throw new Exception("Failed to approve registration: " + e.getMessage());
+            String errorMessage = skipPaymentCheck ? 
+                "Failed to approve registration with override: " + e.getMessage() :
+                "Failed to approve registration: " + e.getMessage();
+            throw new Exception(errorMessage, e);
         }
     }
 

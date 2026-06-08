@@ -19,6 +19,8 @@ public class OrderMapper {
                 .customer(order.getCustomer())
                 .customerId(order.getCustomer() != null ? order.getCustomer().getId() : null)
                 .paymentType(order.getPaymentType())
+                .paymentReference(order.getPaymentReference())
+                .amountReceived(order.getAmountReceived())
                 .status(order.getStatus())
                 .createdAt(order.getCreatedAt())
                 .items(order.getItems().stream()

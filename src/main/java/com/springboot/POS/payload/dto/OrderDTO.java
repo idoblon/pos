@@ -28,7 +28,9 @@ public class OrderDTO {
     private UserDTO cashier;
     private Customer customer;
     private PaymentType paymentType;
-    private String paymentMethod; // frontend sends paymentMethod as string
+    private String paymentMethod;    // frontend sends paymentMethod as string
+    private String paymentReference; // eSewa ref / Khalti token / card last-4
+    private Double amountReceived;   // CASH only
     private OrderStatus status;
     private List<OrderItemDTO> items;
 

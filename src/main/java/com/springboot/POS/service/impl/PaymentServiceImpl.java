@@ -162,6 +162,143 @@ public class PaymentServiceImpl implements PaymentService {
                 .stream().findFirst().isPresent();
     }
 
+    @Override
+    public void adminMarkPaymentCompleted(Long registrationRequestId, String adminReference, Long adminId) {
+        try {
+            // Get registration request
+            StoreRegistrationRequest registration = registrationRepository.findById(registrationRequestId)
+                    .orElseThrow(() -> new RuntimeException("Registration request not found with ID: " + registrationRequestId));
+            
+            // Get or create payment record
+            SubscriptionPayment payment = getPaymentByRegistrationId(registrationRequestId);
+            
+            if (payment == null) {
+                // Create new payment record
+                payment = new SubscriptionPayment();
+                payment.setRegistrationRequestId(registrationRequestId);
+                payment.setSubscriptionPlan(registration.getSubscriptionPlan());
+                payment.setAmount(getSubscriptionAmount(registration.getSubscriptionPlan()));
+                payment.setPaymentMethod("ADMIN_OVERRIDE");
+                payment.setTransactionId(generateTransactionId());
+                payment.setCurrency("NPR");
+                payment.setIsRecurring(true);
+                payment.setSubscriptionStartDate(LocalDateTime.now());
+                payment.setSubscriptionEndDate(LocalDateTime.now().plusMonths(1));
+            }
+            
+            // Validate payment is not already completed
+            if ("COMPLETED".equals(payment.getPaymentStatus())) {
+                throw new RuntimeException("Payment is already marked as completed");
+            }
+            
+            // Mark payment as completed
+            payment.setPaymentStatus("COMPLETED");
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setPaymentGatewayReference(adminReference != null ? adminReference : "ADMIN_MANUAL_" + System.currentTimeMillis());
+            payment.setPaymentGatewayResponse(String.format("Manually verified by admin ID: %d at %s", adminId, LocalDateTime.now()));
+            
+            // Save payment
+            SubscriptionPayment savedPayment = paymentRepository.save(payment);
+            
+            // Update registration request
+            registration.setPaymentStatus("COMPLETED");
+            registration.setTransactionId(savedPayment.getTransactionId());
+            registration.setSubscriptionAmount(savedPayment.getAmount());
+            
+            // Set status to PENDING only if currently PAYMENT_PENDING
+            if ("PAYMENT_PENDING".equals(registration.getStatus())) {
+                registration.setStatus("PENDING");
+            }
+            
+            registrationRepository.save(registration);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to mark payment as completed: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public PaymentStatusDTO getPaymentStatusForAdmin(Long registrationRequestId) {
+        try {
+            // Get registration request
+            StoreRegistrationRequest registration = registrationRepository.findById(registrationRequestId)
+                    .orElseThrow(() -> new RuntimeException("Registration request not found"));
+            
+            // Get payment record
+            SubscriptionPayment payment = getPaymentByRegistrationId(registrationRequestId);
+            
+            // Build DTO
+            PaymentStatusDTO.PaymentStatusDTOBuilder builder = PaymentStatusDTO.builder()
+                    .registrationId(registrationRequestId)
+                    .registrationStatus(registration.getStatus())
+                    .registrationPaymentStatus(registration.getPaymentStatus())
+                    .storeName(registration.getStoreName())
+                    .ownerName(registration.getOwnerName())
+                    .subscriptionPlan(registration.getSubscriptionPlan())
+                    .registrationAmount(registration.getSubscriptionAmount());
+            
+            if (payment != null) {
+                builder
+                    .hasPaymentRecord(true)
+                    .paymentId(payment.getId())
+                    .paymentStatus(payment.getPaymentStatus())
+                    .transactionId(payment.getTransactionId())
+                    .paymentAmount(payment.getAmount())
+                    .paymentMethod(payment.getPaymentMethod())
+                    .paymentGatewayReference(payment.getPaymentGatewayReference())
+                    .paymentCreatedAt(payment.getCreatedAt())
+                    .paidAt(payment.getPaidAt())
+                    .expiresAt(payment.getExpiresAt());
+            } else {
+                builder.hasPaymentRecord(false);
+            }
+            
+            PaymentStatusDTO dto = builder.build();
+            
+            // Set decision flags and messages
+            dto.setCanApprove(hasValidPayment(registrationRequestId));
+            dto.setCanMarkPaymentCompleted(canMarkPaymentCompleted(registrationRequestId));
+            dto.setRequiresManualIntervention(
+                !dto.isCanApprove() && 
+                ("PENDING".equals(registration.getStatus()) || "PAYMENT_PENDING".equals(registration.getStatus()))
+            );
+            
+            // Set status message
+            if (dto.isPaymentCompleted()) {
+                dto.setStatusMessage("Payment completed successfully");
+                dto.setRecommendedAction("Ready for approval");
+            } else if (dto.isPaymentPending() || !dto.isHasPaymentRecord()) {
+                dto.setStatusMessage("Payment not completed");
+                dto.setRecommendedAction("Mark payment as completed or approve with override");
+            } else if (dto.isPaymentFailed()) {
+                dto.setStatusMessage("Payment failed");
+                dto.setRecommendedAction("Create new payment or approve with override");
+            }
+            
+            return dto;
+            
+        } catch (Exception e) {
+            return PaymentStatusDTO.builder()
+                    .registrationId(registrationRequestId)
+                    .error("Failed to retrieve payment status: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    @Override
+    public boolean canMarkPaymentCompleted(Long registrationRequestId) {
+        try {
+            SubscriptionPayment payment = getPaymentByRegistrationId(registrationRequestId);
+            
+            // Can mark as completed if:
+            // 1. No payment record exists, OR
+            // 2. Payment exists but is not already completed
+            return payment == null || !"COMPLETED".equals(payment.getPaymentStatus());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // Private helper methods
     
     private String generateTransactionId() {

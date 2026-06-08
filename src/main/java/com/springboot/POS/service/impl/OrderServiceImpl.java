@@ -9,6 +9,7 @@ import com.springboot.POS.repository.CustomerRepository;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
+import com.springboot.POS.service.OrderPaymentService;
 import com.springboot.POS.service.OrderService;
 import com.springboot.POS.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -31,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final InventoryService inventoryService;
     private final CustomerRepository customerRepository;
+    private final OrderPaymentService orderPaymentService;
 
     @Override
     @Transactional
@@ -38,80 +40,94 @@ public class OrderServiceImpl implements OrderService {
         User cashier = userService.getCurrentUser();
 
         Branch branch = cashier.getBranch();
-        if(branch == null){
-            throw new Exception("cashier's branch not found");
+        if (branch == null) {
+            throw new Exception("Cashier's branch not found");
         }
-        // Resolve customer by ID if provided
+
+        // Resolve payment type (frontend may send paymentMethod string or paymentType enum)
+        PaymentType paymentType = orderDTO.getPaymentType();
+        if (paymentType == null) {
+            throw new Exception("Payment method is required");
+        }
+
+        Long storeId = branch.getStore() != null ? branch.getStore().getId() : null;
+
+        // ── Payment verification BEFORE touching any DB records ───────────────
+        if (storeId != null && !orderPaymentService.isPaymentMethodEnabled(storeId, paymentType)) {
+            throw new Exception(paymentType + " payment is not enabled for this store.");
+        }
+
+        // Build order items first so we know the real total
+        List<OrderItem> orderItems = orderDTO.getItems().stream().map(itemDTO -> {
+            Product product = productRepository.findById(itemDTO.getProductId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Product not found: id=" + itemDTO.getProductId()));
+
+            if (Boolean.TRUE.equals(product.getDeleted())) {
+                throw new EntityNotFoundException("Product no longer available: " + product.getName());
+            }
+
+            double unitPrice = product.getSellingPrice();
+            return OrderItem.builder()
+                    .product(product)
+                    .quantity(itemDTO.getQuantity())
+                    .unitPrice(unitPrice)
+                    .price(unitPrice * itemDTO.getQuantity())
+                    .build();
+        }).collect(Collectors.toList());
+
+        double subtotal = orderItems.stream().mapToDouble(OrderItem::getPrice).sum();
+        double taxAmount = subtotal * 0.13;
+
+        double discountAmount = 0.0;
+        if (orderDTO.getDiscount() != null && orderDTO.getDiscount() > 0) {
+            discountAmount = "percentage".equalsIgnoreCase(orderDTO.getDiscountType())
+                    ? subtotal * (orderDTO.getDiscount() / 100)
+                    : orderDTO.getDiscount();
+        }
+
+        double finalTotal = subtotal + taxAmount - discountAmount;
+
+        // ── Verify payment with gateway / validate cash ───────────────────────
+        orderPaymentService.verify(
+                paymentType,
+                orderDTO.getPaymentReference(),
+                orderDTO.getAmountReceived(),
+                finalTotal,
+                storeId
+        );
+
+        // ── Resolve customer ──────────────────────────────────────────────────
         Customer customer = null;
         if (orderDTO.getCustomerId() != null) {
             customer = customerRepository.findById(orderDTO.getCustomerId()).orElse(null);
         }
 
-        // Resolve paymentType — frontend sends either paymentType or paymentMethod
-        PaymentType paymentType = orderDTO.getPaymentType();
-
+        // ── Persist order ─────────────────────────────────────────────────────
         Order order = Order.builder()
                 .branch(branch)
                 .cashier(cashier)
                 .customer(customer)
                 .paymentType(paymentType)
+                .paymentReference(orderDTO.getPaymentReference())
+                .amountReceived(paymentType == PaymentType.CASH ? orderDTO.getAmountReceived() : finalTotal)
+                .totalAmount(finalTotal)
+                .taxAmount(taxAmount)
+                .discount(orderDTO.getDiscount())
+                .discountType(orderDTO.getDiscountType())
                 .status(OrderStatus.COMPLETED)
                 .build();
 
-
-        List<OrderItem> orderItems = orderDTO.getItems().stream().map(
-                itemDTO -> {
-                    Product product = productRepository.findById(itemDTO.getProductId())
-                            .orElseThrow(() -> new EntityNotFoundException(
-                                    "Product not found: id=" + itemDTO.getProductId()));
-
-                    if (Boolean.TRUE.equals(product.getDeleted())) {
-                        throw new EntityNotFoundException(
-                                "Product no longer available: " + product.getName());
-                    }
-
-                    // Always recalculate from current DB price — never trust frontend price
-                    double unitPrice = product.getSellingPrice();
-                    double lineTotal = unitPrice * itemDTO.getQuantity();
-
-                    return OrderItem.builder()
-                            .product(product)
-                            .quantity(itemDTO.getQuantity())
-                            .unitPrice(unitPrice)
-                            .price(lineTotal)
-                            .order(order)
-                            .build();
-                }
-        ).toList();
-
-        double recalculatedTotal = orderItems.stream()
-                .mapToDouble(OrderItem::getPrice).sum();
-
-        double taxAmount = recalculatedTotal * 0.13;
-        
-        // Apply discount
-        double discountAmount = 0.0;
-        if (orderDTO.getDiscount() != null && orderDTO.getDiscount() > 0) {
-            if ("percentage".equalsIgnoreCase(orderDTO.getDiscountType())) {
-                discountAmount = recalculatedTotal * (orderDTO.getDiscount() / 100);
-            } else {
-                discountAmount = orderDTO.getDiscount();
-            }
-        }
-
-        order.setTotalAmount(recalculatedTotal + taxAmount - discountAmount);
-        order.setTaxAmount(taxAmount);
-        order.setDiscount(orderDTO.getDiscount());
-        order.setDiscountType(orderDTO.getDiscountType());
+        orderItems.forEach(item -> item.setOrder(order));
         order.setItems(orderItems);
 
         Order savedOrder = orderRepository.save(order);
-        
-        // Deduct inventory after successful order save
+
+        // ── Deduct inventory after successful save ────────────────────────────
         for (OrderItem item : orderItems) {
             inventoryService.deductStock(item.getProduct().getId(), branch.getId(), item.getQuantity());
         }
-        
+
         return OrderMapper.toDTO(savedOrder);
     }
 

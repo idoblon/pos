@@ -64,4 +64,31 @@ public class EmailController {
         response.setMessage("Shift report email sent successfully");
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/store-approval")
+    public ResponseEntity<ApiResponse> sendStoreApprovalEmail(@RequestBody EmailRequest request) {
+        emailService.sendStoreRegistrationApproved(
+            request.getTo(),
+            request.getUserName(),
+            request.getStoreName(),
+            request.getTo(),
+            request.getPassword()
+        );
+        ApiResponse response = new ApiResponse();
+        response.setMessage("Store approval email sent successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/store-rejection")
+    public ResponseEntity<ApiResponse> sendStoreRejectionEmail(@RequestBody EmailRequest request) {
+        emailService.sendStoreRegistrationRejected(
+            request.getTo(),
+            request.getUserName(),
+            request.getStoreName(),
+            request.getRole()
+        );
+        ApiResponse response = new ApiResponse();
+        response.setMessage("Store rejection email sent successfully");
+        return ResponseEntity.ok(response);
+    }
 }
