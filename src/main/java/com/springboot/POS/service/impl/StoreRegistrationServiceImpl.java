@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -51,7 +50,27 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
 
     @Override
     public void approveRequest(Long requestId, Long adminId) throws Exception {
-        approveRequestWithOverride(requestId, adminId, false);
+        StoreRegistrationRequest request = getRequestById(requestId);
+        
+        // Validate request status
+        if (!"PENDING".equals(request.getStatus())) {
+            throw new Exception("Request has already been processed. Current status: " + request.getStatus());
+        }
+        
+        // Update registration request to PAYMENT_PENDING (not fully approved yet)
+        request.setStatus("PAYMENT_PENDING");
+        request.setProcessedAt(LocalDateTime.now());
+        request.setApprovedByAdminId(adminId);
+        
+        registrationRepository.save(request);
+        
+        // Send approval email (NOT credentials email)
+        emailService.sendStoreRegistrationApprovalNotification(
+            request.getEmail(),
+            request.getOwnerName(),
+            request.getStoreName(),
+            request.getSubscriptionPlan()
+        );
     }
 
     @Override
@@ -62,63 +81,34 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         if (!"PENDING".equals(request.getStatus()) && !"PAYMENT_PENDING".equals(request.getStatus())) {
             throw new Exception("Request has already been processed. Current status: " + request.getStatus());
         }
-        
-        // Check payment only if not overridden
+
         if (!skipPaymentCheck && !paymentService.hasValidPayment(requestId)) {
-            throw new Exception("Cannot approve request: Payment not completed. Please ensure the user has completed the subscription payment or use the payment override option.");
+            throw new Exception("Cannot approve request: Payment not completed.");
         }
 
         try {
-            // Generate temporary password
-            String tempPassword = generateTempPassword();
-            
-            // Create store
             Store store = storeService.createStoreFromRegistration(
-                request.getStoreName(),
-                request.getStoreDescription(),
-                request.getStoreAddress(),
-                request.getPhone(),
-                request.getStoreType()
+                request.getStoreName(), request.getStoreDescription(),
+                request.getStoreAddress(), request.getPhone(), request.getStoreType()
             );
-            
-            // Create store admin user
-            User storeAdmin = userService.createStoreAdmin(
-                request.getOwnerName(),
-                request.getEmail(),
-                tempPassword,
-                store
+            User storeAdmin = userService.createStoreAdminWithEncodedPassword(
+                request.getOwnerName(), request.getEmail(), request.getPassword(), store
             );
-            
-            // Update store with admin reference
             store.setStoreAdmin(storeAdmin);
             storeRepository.save(store);
-            
-            // Initialize default payment methods for the store
             storePaymentConfigService.initializeDefaultPaymentMethods(store.getId());
-            
-            // Update registration request
             request.setStatus("APPROVED");
             request.setProcessedAt(LocalDateTime.now());
-            request.setApprovedByAdminId(adminId);
+            if (adminId != null) request.setApprovedByAdminId(adminId);
             request.setCreatedStoreId(store.getId());
             request.setCreatedUserId(storeAdmin.getId());
-            
             registrationRepository.save(request);
-            
-            // Send approval email
             emailService.sendStoreRegistrationApproved(
-                request.getEmail(),
-                request.getOwnerName(),
-                request.getStoreName(),
-                request.getEmail(),
-                tempPassword
+                request.getEmail(), request.getOwnerName(), request.getStoreName(),
+                request.getEmail()
             );
-            
         } catch (Exception e) {
-            String errorMessage = skipPaymentCheck ? 
-                "Failed to approve registration with override: " + e.getMessage() :
-                "Failed to approve registration: " + e.getMessage();
-            throw new Exception(errorMessage, e);
+            throw new Exception("Failed to approve registration: " + e.getMessage(), e);
         }
     }
 
@@ -126,7 +116,7 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
     public void rejectRequest(Long requestId, String reason, Long adminId) throws Exception {
         StoreRegistrationRequest request = getRequestById(requestId);
         
-        if (!"PENDING".equals(request.getStatus())) {
+        if (!"PENDING".equals(request.getStatus()) && !"PAYMENT_PENDING".equals(request.getStatus())) {
             throw new Exception("Request has already been processed");
         }
 
@@ -147,15 +137,4 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         );
     }
     
-    private String generateTempPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        SecureRandom random = new SecureRandom();
-        StringBuilder password = new StringBuilder();
-        
-        for (int i = 0; i < 12; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
-        }
-        
-        return password.toString();
-    }
 }

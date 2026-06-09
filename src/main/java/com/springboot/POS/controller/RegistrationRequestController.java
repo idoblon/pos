@@ -50,12 +50,22 @@ public class RegistrationRequestController {
     public ResponseEntity<ApiResponse> approveRequest(
             @PathVariable Long id,
             @RequestHeader("Authorization") String jwt) throws Exception {
-        
         User admin = userService.getUserFromJwtToken(jwt);
         registrationService.approveRequest(id, admin.getId());
-        
         ApiResponse response = new ApiResponse();
-        response.setMessage("Store registration request approved successfully. Approval email sent to applicant.");
+        response.setMessage("Approval email with payment link sent to applicant.");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/approve-final")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse> approveFinal(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User admin = userService.getUserFromJwtToken(jwt);
+        registrationService.approveRequestWithOverride(id, admin.getId(), true);
+        ApiResponse response = new ApiResponse();
+        response.setMessage("Store approved. Login credentials sent to applicant.");
         return ResponseEntity.ok(response);
     }
 

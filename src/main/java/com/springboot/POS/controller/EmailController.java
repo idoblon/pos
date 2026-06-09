@@ -67,15 +67,27 @@ public class EmailController {
 
     @PostMapping("/store-approval")
     public ResponseEntity<ApiResponse> sendStoreApprovalEmail(@RequestBody EmailRequest request) {
+        emailService   .sendStoreRegistrationApprovalNotification(
+            request.getTo(),
+            request.getUserName(),
+            request.getStoreName(),
+            request.getRole()
+        );
+        ApiResponse response = new ApiResponse();
+        response.setMessage("Store approval email sent successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/store-credentials")
+    public ResponseEntity<ApiResponse> sendStoreCredentialsEmail(@RequestBody EmailRequest request) {
         emailService.sendStoreRegistrationApproved(
             request.getTo(),
             request.getUserName(),
             request.getStoreName(),
-            request.getTo(),
-            request.getPassword()
+            request.getTo()
         );
         ApiResponse response = new ApiResponse();
-        response.setMessage("Store approval email sent successfully");
+        response.setMessage("Store credentials email sent successfully");
         return ResponseEntity.ok(response);
     }
 

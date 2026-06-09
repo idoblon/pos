@@ -109,4 +109,15 @@ public class UserServiceImpl implements UserService {
         user.setStore(store);
         return userRepository.save(user);
     }
+
+    @Override
+    public User createStoreAdminWithEncodedPassword(String fullName, String email, String encodedPassword, com.springboot.POS.modal.Store store) {
+        User user = new User();
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPassword(encodedPassword);
+        user.setRole(com.springboot.POS.domain.UserRole.ROLE_STORE_ADMIN);
+        user.setStore(store);
+        return userRepository.save(user);
+    }
 }

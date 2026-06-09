@@ -219,24 +219,41 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail, String tempPassword) {
+    public void sendStoreRegistrationApprovalNotification(String applicantEmail, String ownerName, String storeName, String subscriptionPlan) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(applicantEmail);
-        message.setSubject("Store Registration Approved - Welcome to POS System!");
+        message.setSubject("Store Registration Approved - Payment Required");
         message.setText(String.format(
             "Hello %s,\n\n" +
             "Congratulations! Your store registration request has been APPROVED.\n\n" +
             "Store Details:\n" +
             "Store Name: %s\n" +
-            "Status: APPROVED\n\n" +
+            "Status: APPROVED\n" +
+            "Subscription Plan: %s\n\n" +
+            "Next Step: Please complete your subscription payment to receive your login credentials.\n" +
+            "Payment Link: http://localhost:5173/pay\n\n" +
+            "Once payment is completed, you will receive your login credentials via email.\n\n" +
+            "Best regards,\nPOS System Team",
+            ownerName, storeName, subscriptionPlan
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Override
+    public void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Your POS Store is Ready - Login Now!");
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your payment has been received and your store '%s' is now ACTIVE!\n\n" +
             "Login Credentials:\n" +
             "Email: %s\n" +
-            "Temporary Password: %s\n\n" +
-            "IMPORTANT: Please login immediately and change your password for security.\n\n" +
-            "You can now access your POS system dashboard and start managing your store.\n\n" +
-            "Welcome to the POS System family!\n\n" +
+            "Password: (the password you set during registration)\n\n" +
+            "Login here: http://localhost:5173/login\n\n" +
             "Best regards,\nPOS System Team",
-            ownerName, storeName, loginEmail, tempPassword
+            ownerName, storeName, loginEmail
         ));
         message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);

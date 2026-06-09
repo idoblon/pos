@@ -18,6 +18,7 @@ public interface EmailService {
     
     // Store registration emails
     void sendStoreRegistrationNotification(String adminEmail, String storeName, String ownerName, String ownerEmail, String subscriptionPlan);
-    void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail, String tempPassword);
+    void sendStoreRegistrationApprovalNotification(String applicantEmail, String ownerName, String storeName, String subscriptionPlan);
+    void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail);
     void sendStoreRegistrationRejected(String applicantEmail, String ownerName, String storeName, String rejectionReason);
 }

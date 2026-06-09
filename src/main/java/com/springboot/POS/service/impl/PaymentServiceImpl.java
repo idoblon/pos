@@ -2,6 +2,7 @@ package com.springboot.POS.service.impl;
 
 import com.springboot.POS.modal.SubscriptionPayment;
 import com.springboot.POS.modal.StoreRegistrationRequest;
+import com.springboot.POS.payload.dto.PaymentStatusDTO;
 import com.springboot.POS.repository.SubscriptionPaymentRepository;
 import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.service.PaymentService;
@@ -43,9 +44,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     // Subscription plan pricing
     private static final Map<String, Double> SUBSCRIPTION_PRICES = Map.of(
-        "BASIC", 2999.0,
-        "PROFESSIONAL", 5999.0,
-        "ENTERPRISE", 12999.0
+        "BASIC", 3500.0,
+        "PROFESSIONAL", 7000.0,
+        "ENTERPRISE", 10000.0
     );
 
     @Override
@@ -125,7 +126,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Double getSubscriptionAmount(String subscriptionPlan) {
-        return SUBSCRIPTION_PRICES.getOrDefault(subscriptionPlan, 2999.0);
+        return SUBSCRIPTION_PRICES.getOrDefault(subscriptionPlan, 3500.0);
     }
 
     @Override
