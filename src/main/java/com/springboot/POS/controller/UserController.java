@@ -9,7 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.springboot.POS.domain.UserRole;
+import com.springboot.POS.payload.response.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,6 +38,7 @@ public class UserController {
         }
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
+
     @PutMapping("/api/users/{id}")
     public ResponseEntity<UserDTO> updateUser(
             @RequestHeader("Authorization") String jwt,
@@ -42,11 +47,66 @@ public class UserController {
         User updatedUser = userService.updateUser(id, userDTO);
         return ResponseEntity.ok(UserMapper.toDTO(updatedUser));
     }
+
     @GetMapping("/users/list")
     public ResponseEntity<List<User>> getUserList(
            ) throws UserException, Exception {
         List<User> users = userService.getAllUser();
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/api/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getAllUsers(
+            @RequestParam(required = false) UserRole role) {
+        List<User> users = userService.getAllUser();
+        if (role != null) {
+            users = users.stream()
+                    .filter(u -> u.getRole() == role)
+                    .toList();
+        }
+        return ResponseEntity.ok(users.stream()
+                .map(UserMapper::toDTO)
+                .toList());
+    }
+
+    @GetMapping("/api/users/store-admins")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getStoreAdmins() {
+        List<User> users = userService.getAllUser().stream()
+                .filter(u -> u.getRole() == UserRole.ROLE_STORE_ADMIN)
+                .toList();
+        return ResponseEntity.ok(users.stream()
+                .map(UserMapper::toDTO)
+                .toList());
+    }
+
+    @PostMapping("/api/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDTO> createUser(
+            @RequestBody UserDTO userDTO) throws Exception {
+        User user = userService.createUser(userDTO);
+        return ResponseEntity.ok(UserMapper.toDTO(user));
+    }
+
+    @DeleteMapping("/api/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse> deleteUser(
+            @PathVariable Long id) throws Exception {
+        userService.deleteUser(id);
+        ApiResponse response = new ApiResponse();
+        response.setMessage("User deleted successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/api/users/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDTO> toggleUserStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) throws Exception {
+        String status = body.get("status");
+        User user = userService.toggleUserStatus(id, status);
+        return ResponseEntity.ok(UserMapper.toDTO(user));
     }
     
     @PutMapping("/api/users/update-password")
@@ -55,6 +115,13 @@ public class UserController {
             @RequestBody UpdatePasswordRequest request) throws Exception {
         userService.updatePassword(request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok("Password updated successfully");
+    }
+
+    @PutMapping("/api/users/change-password")
+    public ResponseEntity<String> changePassword(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody UpdatePasswordRequest request) throws Exception {
+        return updatePassword(jwt, request);
     }
     
     // Inner class for password update request

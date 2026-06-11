@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,11 +35,8 @@ public class StoreController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
 
-        // Convert entities to DTOs since service returns List<Store>
-        List<Store> stores = storeService.getAllStores();
-        List<StoreDTO> storeDTOs = stores.stream()
-                .map(StoreMapper::toDTO)
-                .collect(Collectors.toList());
+        // Convert entities to DTOs and enrich with registration subscription data
+        List<StoreDTO> storeDTOs = storeService.getAllStoreDTOs();
 
         return ResponseEntity.ok(storeDTOs);
     }

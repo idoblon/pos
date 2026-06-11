@@ -36,6 +36,8 @@ public class UserDTO {
     private String storePhone;
     private String storeAddress;
 
+    private String status;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime lastLogin;

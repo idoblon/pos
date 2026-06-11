@@ -17,4 +17,7 @@ public interface UserService {
     void updatePassword(String currentPassword, String newPassword) throws Exception;
     User createStoreAdmin(String fullName, String email, String password, Store store);
     User createStoreAdminWithEncodedPassword(String fullName, String email, String encodedPassword, Store store);
+    User createUser(UserDTO userDTO) throws Exception;
+    void deleteUser(Long id) throws Exception;
+    User toggleUserStatus(Long id, String status) throws Exception;
 }

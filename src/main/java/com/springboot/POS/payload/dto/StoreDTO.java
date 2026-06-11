@@ -26,5 +26,17 @@ public class StoreDTO {
     private StoreStatus status;
 
     private StoreContact contact = new StoreContact();
+    
+    // Registration and subscription fields
+    private String fullName;
+    private String email;
+    private String phone;
+    private String storeAddress;
+    private String subscriptionPlan;
+    private Integer estimatedBranches;
+    private Integer estimatedUsers;
+    private Double totalRevenue;
+    private LocalDateTime approvedAt;
+    private Long registrationRequestId;
 
 }

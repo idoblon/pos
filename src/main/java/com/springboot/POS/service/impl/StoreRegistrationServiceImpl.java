@@ -88,9 +88,19 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
 
         try {
             Store store = storeService.createStoreFromRegistration(
-                request.getStoreName(), request.getStoreDescription(),
-                request.getStoreAddress(), request.getPhone(), request.getStoreType()
+                request.getStoreName(), 
+                request.getStoreDescription(),
+                request.getStoreAddress(), 
+                request.getPhone(), 
+                request.getStoreType(),
+                request.getSubscriptionPlan(),
+                request.getEstimatedBranches() != null ? request.getEstimatedBranches() : 1,
+                request.getEstimatedUsers() != null ? request.getEstimatedUsers() : 1,
+                request.getOwnerName(),
+                request.getEmail()
             );
+            store.setRegistrationRequestId(requestId);
+            store.setApprovedAt(LocalDateTime.now());
             User storeAdmin = userService.createStoreAdminWithEncodedPassword(
                 request.getOwnerName(), request.getEmail(), request.getPassword(), store
             );

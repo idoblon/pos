@@ -43,6 +43,10 @@ public class StoreRegistrationRequest {
     
     @Column(nullable = false)
     private String subscriptionPlan; // BASIC, PROFESSIONAL, ENTERPRISE
+
+    private Integer estimatedBranches = 1;
+
+    private Integer estimatedUsers = 1;
     
     private Double subscriptionAmount; // Amount for the selected plan
     

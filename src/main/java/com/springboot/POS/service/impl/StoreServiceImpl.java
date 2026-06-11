@@ -6,8 +6,10 @@ import com.springboot.POS.exceptions.UserException;
 import com.springboot.POS.mapper.StoreMapper;
 import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.StoreContact;
+import com.springboot.POS.modal.StoreRegistrationRequest;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StoreDTO;
+import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
+    private final StoreRegistrationRequestRepository registrationRepository;
     private final UserService userService;
 
     @Override
@@ -34,7 +37,9 @@ public class StoreServiceImpl implements StoreService {
     public StoreDTO getStoreById(Long id) throws Exception {
         Store store = storeRepository.findById(id).orElseThrow(
                 () -> new Exception("Store not found with id: " + id));
-        return StoreMapper.toDTO(store);
+        StoreDTO dto = StoreMapper.toDTO(store);
+        enrichFromRegistration(store, dto);
+        return dto;
     }
 
     @Override
@@ -44,10 +49,79 @@ public class StoreServiceImpl implements StoreService {
     }
 
     // Optional: Add a method to get DTOs if needed
+    @Override
     public List<StoreDTO> getAllStoreDTOs() {
         return storeRepository.findAll().stream()
-                .map(StoreMapper::toDTO)
+                .map(store -> {
+                    StoreDTO dto = StoreMapper.toDTO(store);
+                    enrichFromRegistration(store, dto);
+                    return dto;
+                })
                 .collect(Collectors.toList());
+    }
+
+    private void enrichFromRegistration(Store store, StoreDTO dto) {
+        StoreRegistrationRequest registration = resolveRegistrationRequest(store);
+        if (registration == null) {
+            return;
+        }
+
+        if (isBlank(dto.getSubscriptionPlan())) {
+            dto.setSubscriptionPlan(registration.getSubscriptionPlan());
+        }
+        if (dto.getEstimatedBranches() == null) {
+            dto.setEstimatedBranches(registration.getEstimatedBranches());
+        }
+        if (dto.getEstimatedUsers() == null) {
+            dto.setEstimatedUsers(registration.getEstimatedUsers());
+        }
+        if (isBlank(dto.getFullName())) {
+            dto.setFullName(registration.getOwnerName());
+        }
+        if (isBlank(dto.getStoreAddress())) {
+            dto.setStoreAddress(registration.getStoreAddress());
+        }
+        if (isBlank(dto.getEmail())) {
+            dto.setEmail(registration.getEmail());
+        }
+        if (isBlank(dto.getPhone())) {
+            dto.setPhone(registration.getPhone());
+        }
+        if (dto.getRegistrationRequestId() == null) {
+            dto.setRegistrationRequestId(registration.getId());
+        }
+    }
+
+    private StoreRegistrationRequest resolveRegistrationRequest(Store store) {
+        if (store.getRegistrationRequestId() != null) {
+            StoreRegistrationRequest byRequestId =
+                    registrationRepository.findById(store.getRegistrationRequestId()).orElse(null);
+            if (byRequestId != null) {
+                return byRequestId;
+            }
+        }
+        if (store.getId() != null) {
+            StoreRegistrationRequest byStoreId =
+                    registrationRepository.findByCreatedStoreId(store.getId()).orElse(null);
+            if (byStoreId != null) {
+                return byStoreId;
+            }
+        }
+        if (store.getBrand() != null) {
+            StoreRegistrationRequest approved =
+                    registrationRepository.findFirstByStoreNameIgnoreCaseAndStatusOrderByCreatedAtDesc(
+                            store.getBrand(), "APPROVED").orElse(null);
+            if (approved != null) {
+                return approved;
+            }
+            return registrationRepository.findFirstByStoreNameIgnoreCaseOrderByCreatedAtDesc(store.getBrand())
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override
@@ -178,17 +252,25 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
-    public Store createStoreFromRegistration(String storeName, String description, String address, String phone, String storeType) {
+    public Store createStoreFromRegistration(String storeName, String description, String address, String phone, String storeType, String subscriptionPlan, Integer estimatedBranches, Integer estimatedUsers, String ownerName, String email) {
         Store store = new Store();
         store.setBrand(storeName);
         store.setDescription(description);
         store.setStoreType(storeType);
         store.setStatus(StoreStatus.ACTIVE);
         
+        // Set subscription information
+        store.setSubscriptionPlan(subscriptionPlan);
+        store.setEstimatedBranches(estimatedBranches);
+        store.setEstimatedUsers(estimatedUsers);
+        store.setFullName(ownerName);
+        store.setStoreAddress(address);
+        
         // Set contact information
         StoreContact contact = StoreContact.builder()
                 .address(address)
                 .phone(phone)
+                .email(email)
                 .build();
         store.setContact(contact);
         

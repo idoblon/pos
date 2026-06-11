@@ -56,6 +56,9 @@ public class User {
 
     private Boolean deleted = false;
 
+    @Column(nullable = false)
+    private String status = "active";
+
     // Expose only IDs in JSON response
     public Long getStoreId() {
         return store != null ? store.getId() : null;

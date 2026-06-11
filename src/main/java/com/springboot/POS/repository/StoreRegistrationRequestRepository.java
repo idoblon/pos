@@ -13,4 +13,7 @@ public interface StoreRegistrationRequestRepository extends JpaRepository<StoreR
     boolean existsByEmail(String email);
     List<StoreRegistrationRequest> findByStatus(String status);
     List<StoreRegistrationRequest> findByStatusOrderByCreatedAtDesc(String status);
+    Optional<StoreRegistrationRequest> findByCreatedStoreId(Long createdStoreId);
+    Optional<StoreRegistrationRequest> findFirstByStoreNameIgnoreCaseAndStatusOrderByCreatedAtDesc(String storeName, String status);
+    Optional<StoreRegistrationRequest> findFirstByStoreNameIgnoreCaseOrderByCreatedAtDesc(String storeName);
 }
