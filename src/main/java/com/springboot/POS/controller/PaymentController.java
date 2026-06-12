@@ -145,9 +145,9 @@ public class PaymentController {
     @GetMapping("/plans")
     public ResponseEntity<Map<String, Object>> getSubscriptionPlans() {
         Map<String, Object> plans = new HashMap<>();
-        plans.put("BASIC", Map.of("name", "Basic", "price", 2999.0, "currency", "NPR"));
-        plans.put("PROFESSIONAL", Map.of("name", "Professional", "price", 5999.0, "currency", "NPR"));
-        plans.put("ENTERPRISE", Map.of("name", "Enterprise", "price", 12999.0, "currency", "NPR"));
+        plans.put("BASIC", Map.of("name", "Basic", "price", 3500.0, "currency", "NPR"));
+        plans.put("PROFESSIONAL", Map.of("name", "Professional", "price", 7000.0, "currency", "NPR"));
+        plans.put("ENTERPRISE", Map.of("name", "Enterprise", "price", 10000.0, "currency", "NPR"));
 
         Map<String, Object> response = new HashMap<>();
         response.put("plans", plans);
