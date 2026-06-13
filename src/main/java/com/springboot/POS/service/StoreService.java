@@ -19,7 +19,7 @@ public interface StoreService {
     StoreDTO updateStore(Long id, StoreDTO storeDTO) throws Exception;
     void deleteStore(Long id) throws UserException;
     StoreDTO getStoreByEmployee() throws UserException;
-
     StoreDTO moderateStore(Long id, StoreStatus status) throws Exception;
+    void updateSubscriptionPlan(Long storeId, String subscriptionPlan) throws Exception;
 
 }

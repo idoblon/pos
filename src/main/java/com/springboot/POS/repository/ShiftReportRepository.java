@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface ShiftReportRepository extends JpaRepository<ShiftReport, Long> {
 
     List<ShiftReport> findByCashierId(Long id);
+
     List<ShiftReport> findByBranchId(Long id);
 
 

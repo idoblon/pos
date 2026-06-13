@@ -2,7 +2,7 @@ package com.springboot.POS.service.impl;
 
 import com.springboot.POS.domain.PaymentType;
 import com.springboot.POS.exceptions.UserException;
-import com.springboot.POS.mapper.ShiftReportMapper;
+import com.springboot.POS.mapper.*;
 import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.ShiftReportDTO;
 import com.springboot.POS.repository.*;
@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ShiftReportServiceImpl implements ShiftReportService {
 
-
     private final ShiftReportRepository shiftReportRepository;
     private final UserService userService;
     private final BranchRepository branchRepository;
@@ -31,17 +30,14 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     @Override
     public ShiftReportDTO startShift(Double openingFloat) throws Exception {
         User currentUser = userService.getCurrentUser();
-        
-        // Check if there's already an active shift (not ended)
+
         Optional<ShiftReport> activeShift = shiftReportRepository
                 .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(currentUser);
-        
+
         if (activeShift.isPresent()) {
-            // Return existing active shift instead of throwing error
             return ShiftReportMapper.toDTO(activeShift.get());
         }
-        
-        // No active shift, create a new one
+
         LocalDateTime shiftStart = LocalDateTime.now();
         Branch branch = currentUser.getBranch();
 
@@ -81,12 +77,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
 
-        // Cash reconciliation algorithm
         double cashSales = orders.stream()
-                .filter(o -> o.getPaymentType() == com.springboot.POS.domain.PaymentType.CASH)
+                .filter(o -> o.getPaymentType() == PaymentType.CASH)
                 .mapToDouble(Order::getTotalAmount).sum();
         double cashRefunds = refunds.stream()
-                .filter(r -> r.getPaymentType() == com.springboot.POS.domain.PaymentType.CASH)
+                .filter(r -> r.getPaymentType() == PaymentType.CASH)
                 .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
 
         double openingFloat = shiftReport.getOpeningFloat() != null ? shiftReport.getOpeningFloat() : 0.0;
@@ -116,80 +111,76 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         return ShiftReportMapper.toDTO(savedReport);
     }
 
-
     @Override
     public ShiftReportDTO getShiftReportById(Long id) throws Exception {
         return shiftReportRepository.findById(id).map(ShiftReportMapper::toDTO)
-                .orElseThrow(
-                ()-> new Exception("Shift report not found with given id" + id)
-        );
+                .orElseThrow(() -> new Exception("Shift report not found with given id" + id));
     }
 
     @Override
     public List<ShiftReportDTO> getAllShiftReports() {
         List<ShiftReport> reports = shiftReportRepository.findAll();
-        return reports.stream().map(
-                ShiftReportMapper::toDTO
-        ).collect(Collectors.toList());
+        return reports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
     public List<ShiftReportDTO> getShiftReportByBranchId(Long branchId) {
         List<ShiftReport> reports = shiftReportRepository.findByBranchId(branchId);
-        return reports.stream().map(
-                ShiftReportMapper::toDTO
-        ).collect(Collectors.toList());
+        return reports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
     public List<ShiftReportDTO> getShiftReportByCashierId(Long cashierId) {
         List<ShiftReport> reports = shiftReportRepository.findByCashierId(cashierId);
-        return reports.stream().map(
-                ShiftReportMapper::toDTO
-        ).collect(Collectors.toList());
+        return reports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
-    public ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception{
+    public ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception {
         User user = userService.getCurrentUser();
 
-        ShiftReport shiftReport= shiftReportRepository
+        ShiftReport shiftReport = shiftReportRepository
                 .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user)
                 .orElseThrow(() -> new Exception("no active shift found for cashier"));
 
-        LocalDateTime now= LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
-        List<Order> orders= orderRepository.findByCashierAndCreatedAtBetween(
-                user, shiftReport.getShiftStart(),now
+        List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
+                user, shiftReport.getShiftStart(), now
         );
         List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                user.getId(),
-                shiftReport.getShiftStart(), now
+                user.getId(), shiftReport.getShiftStart(), now
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0).sum();
-        double totalSales=orders.stream()
-                .mapToDouble(Order::getTotalAmount).sum();
-
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
         int totalOrders = orders.size();
+        double netSales = totalSales - totalRefunds;
 
-        double netSales=totalSales-totalRefunds;
-
-        shiftReport.setTotalRefunds(totalRefunds);
-        shiftReport.setTotalSales(totalSales);
-        shiftReport.setTotalOrders(totalOrders);
-        shiftReport.setNetSale(netSales);
-        shiftReport.setRecentOrders(getRecentOrders(orders));
-        shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
-        shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
-        shiftReport.setRefunds(refunds);
-
-        ShiftReport savedReport=shiftReportRepository.save(shiftReport);
-
-        return ShiftReportMapper.toDTO(savedReport);
-
+        return ShiftReportDTO.builder()
+                .id(shiftReport.getId())
+                .shiftStart(shiftReport.getShiftStart())
+                .shiftEnd(shiftReport.getShiftEnd())
+                .openingFloat(shiftReport.getOpeningFloat())
+                .cashier(shiftReport.getCashier() != null ? UserMapper.toDTO(shiftReport.getCashier()) : null)
+                .cashierId(shiftReport.getCashier() != null ? shiftReport.getCashier().getId() : null)
+                .branch(shiftReport.getBranch() != null ? BranchMapper.toDTO(shiftReport.getBranch()) : null)
+                .branchId(shiftReport.getBranch() != null ? shiftReport.getBranch().getId() : null)
+                .totalSales(totalSales)
+                .totalRefunds(totalRefunds)
+                .totalOrders(totalOrders)
+                .netSale(netSales)
+                .recentOrders(getRecentOrders(orders).stream()
+                        .map(OrderMapper::toDTO).collect(Collectors.toList()))
+                .topSellingProducts(getTopSellingProducts(orders).stream()
+                        .map(ProductMapper::toDTO).collect(Collectors.toList()))
+                .paymentSummaries(getPaymentSummaries(orders, totalSales))
+                .refunds(refunds.stream()
+                        .map(RefundMapper::toDTO).collect(Collectors.toList()))
+                .build();
     }
+
     @Override
     public ShiftReportDTO getCurrentShiftReportProgress() throws Exception {
         User user = userService.getCurrentUser();
@@ -205,60 +196,65 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 user, shiftReport.getShiftStart(), now
         );
         List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                user.getId(),
-                shiftReport.getShiftStart(), now
+                user.getId(), shiftReport.getShiftStart(), now
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0).sum();
-        double totalSales = orders.stream()
-                .mapToDouble(Order::getTotalAmount).sum();
-
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
 
-        shiftReport.setTotalRefunds(totalRefunds);
-        shiftReport.setTotalSales(totalSales);
-        shiftReport.setTotalOrders(totalOrders);
-        shiftReport.setNetSale(netSales);
-        shiftReport.setRecentOrders(getRecentOrders(orders));
-        shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
-        shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
-        shiftReport.setRefunds(refunds);
-
-        ShiftReport savedReport = shiftReportRepository.save(shiftReport);
-        return ShiftReportMapper.toDTO(savedReport);
+        return ShiftReportDTO.builder()
+                .id(shiftReport.getId())
+                .shiftStart(shiftReport.getShiftStart())
+                .shiftEnd(shiftReport.getShiftEnd())
+                .openingFloat(shiftReport.getOpeningFloat())
+                .cashier(shiftReport.getCashier() != null ? UserMapper.toDTO(shiftReport.getCashier()) : null)
+                .cashierId(shiftReport.getCashier() != null ? shiftReport.getCashier().getId() : null)
+                .branch(shiftReport.getBranch() != null ? BranchMapper.toDTO(shiftReport.getBranch()) : null)
+                .branchId(shiftReport.getBranch() != null ? shiftReport.getBranch().getId() : null)
+                .totalSales(totalSales)
+                .totalRefunds(totalRefunds)
+                .totalOrders(totalOrders)
+                .netSale(netSales)
+                .recentOrders(getRecentOrders(orders).stream()
+                        .map(OrderMapper::toDTO).collect(Collectors.toList()))
+                .topSellingProducts(getTopSellingProducts(orders).stream()
+                        .map(ProductMapper::toDTO).collect(Collectors.toList()))
+                .paymentSummaries(getPaymentSummaries(orders, totalSales))
+                .refunds(refunds.stream()
+                        .map(RefundMapper::toDTO).collect(Collectors.toList()))
+                .build();
     }
+
     @Override
-    public ShiftReportDTO getShiftByCashierAndDate(Long cashierId,
-                                                   LocalDateTime date) throws Exception {
-        User cashier = userRepository.findById(cashierId).orElseThrow(
-                ()-> new Exception("cashier id not found" + cashierId));
+    public ShiftReportDTO getShiftByCashierAndDate(Long cashierId, LocalDateTime date) throws Exception {
+        User cashier = userRepository.findById(cashierId)
+                .orElseThrow(() -> new Exception("cashier id not found" + cashierId));
         LocalDateTime start = date.withHour(0).withMinute(0).withSecond(0);
         LocalDateTime end = date.withHour(23).withMinute(59).withSecond(59);
 
         ShiftReport report = shiftReportRepository.findByCashierAndShiftStartBetween(
                 cashier, start, end
-        ).orElseThrow(()-> new Exception("Shift report nof found for date"));
+        ).orElseThrow(() -> new Exception("Shift report not found for date"));
         return ShiftReportMapper.toDTO(report);
     }
 
-    private List<PaymentSummary> getPaymentSummaries(List<Order> orders,
-                                                     double totalSales) {
+    private List<PaymentSummary> getPaymentSummaries(List<Order> orders, double totalSales) {
         if (orders == null || orders.isEmpty()) {
             return new ArrayList<>();
         }
         Map<PaymentType, List<Order>> grouped = orders.stream()
-                .collect(Collectors.groupingBy(order ->order.getPaymentType()!=null?
-                        order.getPaymentType():PaymentType.CASH));
+                .collect(Collectors.groupingBy(order -> order.getPaymentType() != null ?
+                        order.getPaymentType() : PaymentType.CASH));
 
         List<PaymentSummary> summaries = new ArrayList<>();
-        for(Map.Entry<PaymentType, List<Order>> entry : grouped.entrySet()){
+        for (Map.Entry<PaymentType, List<Order>> entry : grouped.entrySet()) {
             double amount = entry.getValue().stream()
                     .mapToDouble(Order::getTotalAmount).sum();
-
             int transactions = entry.getValue().size();
-            double percent = totalSales > 0 ? (amount/totalSales)*100 : 0.0;
+            double percent = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
 
             PaymentSummary ps = new PaymentSummary();
             ps.setType(entry.getKey());
@@ -269,17 +265,17 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         }
         return summaries;
     }
-    private List<Product> getTopSellingProducts(List<Order> orders) {
-        Map<Product,Integer> productSalesMap = new HashMap<>();
-        for(Order order:orders){
-            for(OrderItem item: order.getItems()){
-                Product product = item.getProduct();
-                productSalesMap.put(product, productSalesMap.getOrDefault(product, 0)+item.getQuantity());
 
+    private List<Product> getTopSellingProducts(List<Order> orders) {
+        Map<Product, Integer> productSalesMap = new HashMap<>();
+        for (Order order : orders) {
+            for (OrderItem item : order.getItems()) {
+                Product product = item.getProduct();
+                productSalesMap.put(product, productSalesMap.getOrDefault(product, 0) + item.getQuantity());
             }
         }
         return productSalesMap.entrySet().stream()
-                .sorted((a,b)->b.getValue().compareTo(a.getValue()))
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
                 .limit(5)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
@@ -291,5 +287,4 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .limit(5)
                 .collect(Collectors.toList());
     }
-
 }

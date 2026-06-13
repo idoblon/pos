@@ -27,7 +27,7 @@ public class UserDTO {
 
     private Long branchId;
 
-    private Long StoreId;
+    private Long storeId;
 
     private String storeName;
     private String storeDescription;
@@ -35,6 +35,7 @@ public class UserDTO {
     private String storeEmail;
     private String storePhone;
     private String storeAddress;
+    private String storeOwnerName;
 
     private String status;
 

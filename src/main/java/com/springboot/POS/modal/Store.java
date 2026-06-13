@@ -79,6 +79,14 @@ public class Store {
         if (totalRevenue == null) {
             totalRevenue = 0.0;
         }
+        // Ensure contact is never null
+        if (contact == null) {
+            contact = new StoreContact();
+        }
+        // Ensure subscription plan defaults to BASIC if null
+        if (subscriptionPlan == null || subscriptionPlan.trim().isEmpty()) {
+            subscriptionPlan = "BASIC";
+        }
     }
 
 }

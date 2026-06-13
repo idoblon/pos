@@ -1,9 +1,11 @@
 package com.springboot.POS.controller;
 
 import com.springboot.POS.modal.StoreRegistrationRequest;
+import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.StoreRegistrationService;
+import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class AdminController {
 
     private final StoreRegistrationService registrationService;
+    private final StoreService storeService;
     private final UserService userService;
 
     /**
@@ -114,6 +117,32 @@ public class AdminController {
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Store registration request rejected successfully. Rejection email sent to applicant.");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update store subscription plan
+     * Matches frontend expectation: PUT /api/admin/stores/{storeId}/subscription
+     */
+    @PutMapping("/stores/{storeId}/subscription")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse> updateStoreSubscription(
+            @PathVariable Long storeId,
+            @RequestBody Map<String, String> request,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        
+        User admin = userService.getUserFromJwtToken(jwt);
+        String subscriptionPlan = request.get("subscriptionPlan");
+        
+        if (subscriptionPlan == null || subscriptionPlan.trim().isEmpty()) {
+            throw new IllegalArgumentException("Subscription plan is required");
+        }
+        
+        log.info("Admin {} updating store {} subscription to: {}", admin.getId(), storeId, subscriptionPlan);
+        storeService.updateSubscriptionPlan(storeId, subscriptionPlan.toUpperCase());
+        
+        ApiResponse response = new ApiResponse();
+        response.setMessage("Store subscription plan updated successfully to " + subscriptionPlan);
         return ResponseEntity.ok(response);
     }
 

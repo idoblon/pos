@@ -259,21 +259,38 @@ public class StoreServiceImpl implements StoreService {
         store.setStoreType(storeType);
         store.setStatus(StoreStatus.ACTIVE);
         
-        // Set subscription information
-        store.setSubscriptionPlan(subscriptionPlan);
-        store.setEstimatedBranches(estimatedBranches);
-        store.setEstimatedUsers(estimatedUsers);
+        // Set subscription information - ensure no NULLs
+        store.setSubscriptionPlan(subscriptionPlan != null ? subscriptionPlan.toUpperCase() : "BASIC");
+        store.setEstimatedBranches(estimatedBranches != null ? estimatedBranches : 1);
+        store.setEstimatedUsers(estimatedUsers != null ? estimatedUsers : 1);
         store.setFullName(ownerName);
         store.setStoreAddress(address);
         
-        // Set contact information
+        // Set contact information - ensure StoreContact is initialized
         StoreContact contact = StoreContact.builder()
-                .address(address)
-                .phone(phone)
-                .email(email)
+                .address(address != null ? address : "")
+                .phone(phone != null ? phone : "")
+                .email(email != null ? email : "")
                 .build();
         store.setContact(contact);
         
-        return storeRepository.save(store);
+        Store savedStore = storeRepository.save(store);
+        
+        // Log for debugging
+        System.out.println("✅ Store created: " + storeName + 
+            " | Email: " + email + 
+            " | Contact Email: " + (savedStore.getContact() != null ? savedStore.getContact().getEmail() : "NULL") +
+            " | Subscription: " + savedStore.getSubscriptionPlan());
+        
+        return savedStore;
+    }
+
+    @Override
+    public void updateSubscriptionPlan(Long storeId, String subscriptionPlan) throws Exception {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new Exception("Store not found with id: " + storeId));
+        
+        store.setSubscriptionPlan(subscriptionPlan);
+        storeRepository.save(store);
     }
 }

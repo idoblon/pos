@@ -15,10 +15,18 @@ public class UserMapper {
         userDto.setLastLogin(savedUser.getLastLogin());
         userDto.setPhone(savedUser.getPhone());
         userDto.setStatus(savedUser.getStatus());
-        userDto.setStoreId(savedUser.getStore()!=null? savedUser.getStore().getId():null);
-        userDto.setStoreName(savedUser.getStore()!=null? savedUser.getStore().getBrand():null);
-        userDto.setBranchId(savedUser.getBranch()!=null? savedUser.getBranch().getId():null);
-
+        userDto.setStoreId(savedUser.getStore() != null ? savedUser.getStore().getId() : null);
+        userDto.setStoreName(savedUser.getStore() != null ? savedUser.getStore().getBrand() : null);
+        userDto.setStoreDescription(savedUser.getStore() != null ? savedUser.getStore().getDescription() : null);
+        userDto.setStoreType(savedUser.getStore() != null ? savedUser.getStore().getStoreType() : null);
+        userDto.setStoreEmail(savedUser.getStore() != null && savedUser.getStore().getContact() != null
+                ? savedUser.getStore().getContact().getEmail() : null);
+        userDto.setStorePhone(savedUser.getStore() != null && savedUser.getStore().getContact() != null
+                ? savedUser.getStore().getContact().getPhone() : null);
+        userDto.setStoreAddress(savedUser.getStore() != null && savedUser.getStore().getContact() != null
+                ? savedUser.getStore().getContact().getAddress() : null);
+        userDto.setStoreOwnerName(savedUser.getStore() != null ? savedUser.getStore().getFullName() : null);
+        userDto.setBranchId(savedUser.getBranch() != null ? savedUser.getBranch().getId() : null);
         return userDto;
     }
 
