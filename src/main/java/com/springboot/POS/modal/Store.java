@@ -79,9 +79,19 @@ public class Store {
         if (totalRevenue == null) {
             totalRevenue = 0.0;
         }
-        // Ensure contact is never null
+        // Ensure contact is initialized with non-null values
         if (contact == null) {
             contact = new StoreContact();
+        }
+        // Preserve existing email - don't overwrite with empty string
+        if (contact.getEmail() == null) {
+            contact.setEmail("");
+        }
+        if (contact.getAddress() == null) {
+            contact.setAddress("");
+        }
+        if (contact.getPhone() == null) {
+            contact.setPhone("");
         }
         // Ensure subscription plan defaults to BASIC if null
         if (subscriptionPlan == null || subscriptionPlan.trim().isEmpty()) {

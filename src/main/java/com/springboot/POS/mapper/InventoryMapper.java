@@ -23,6 +23,10 @@ public class InventoryMapper {
                 .categoryName(inventory.getProduct() != null && inventory.getProduct().getCategory() != null 
                         ? inventory.getProduct().getCategory().getName() : null)
                 .quantity(inventory.getQuantity())
+                .unitPrice(inventory.getUnitPrice())
+                .storeId(inventory.getStore() != null ? inventory.getStore().getId() : 
+                        (inventory.getBranch() != null && inventory.getBranch().getStore() != null ? 
+                         inventory.getBranch().getStore().getId() : null))
                 .lastUpdate(inventory.getLastUpdate())
                 .lowStockThreshold(DEFAULT_LOW_STOCK_THRESHOLD)
                 .build();

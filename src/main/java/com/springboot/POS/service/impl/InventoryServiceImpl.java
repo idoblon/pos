@@ -25,25 +25,65 @@ public class InventoryServiceImpl implements InventoryService {
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final StockMovementService stockMovementService;
+    private final com.springboot.POS.repository.StoreRepository storeRepository;
 
 
     @Override
     public InventoryDTO createInventory(InventoryDTO inventoryDTO) throws Exception {
-
-        Branch branch = branchRepository.findById(inventoryDTO.getBranchId()).orElseThrow(
-                ()-> new Exception("branch does not exist....")
-        );
+        System.out.println("\n=== CREATING INVENTORY ===");
+        System.out.println("DTO: branchId=" + inventoryDTO.getBranchId() + ", storeId=" + inventoryDTO.getStoreId());
+        System.out.println("DTO: productId=" + inventoryDTO.getProductId() + ", quantity=" + inventoryDTO.getQuantity());
+        
         Product product = productRepository.findById(inventoryDTO.getProductId()).orElseThrow(
                 () -> new Exception("product doesn't exist....")
         );
 
-        Inventory inventory = Inventory.builder()
-                .branch(branch)
-                .product(product)
-                .quantity(inventoryDTO.getQuantity())
-                .build();
+        Inventory inventory;
+        
+        // Check if this is warehouse inventory (branchId is null)
+        if (inventoryDTO.getBranchId() == null) {
+            System.out.println("Creating WAREHOUSE inventory...");
+            // Warehouse inventory
+            if (inventoryDTO.getStoreId() == null) {
+                throw new Exception("Store ID is required for warehouse inventory");
+            }
+            
+            com.springboot.POS.modal.Store store = storeRepository.findById(inventoryDTO.getStoreId())
+                    .orElseThrow(() -> new Exception("Store does not exist"));
+            
+            inventory = Inventory.builder()
+                    .branch(null)  // NULL = Warehouse
+                    .store(store)
+                    .product(product)
+                    .quantity(inventoryDTO.getQuantity())
+                    .unitPrice(inventoryDTO.getUnitPrice())
+                    .build();
+            System.out.println("Warehouse inventory built: " + inventory.getQuantity() + " units");
+        } else {
+            System.out.println("Creating BRANCH inventory for branchId: " + inventoryDTO.getBranchId());
+            // Branch inventory
+            Branch branch = branchRepository.findById(inventoryDTO.getBranchId()).orElseThrow(
+                    ()-> new Exception("branch does not exist....")
+            );
+            
+            inventory = Inventory.builder()
+                    .branch(branch)
+                    .store(null)  // Store reference is in branch
+                    .product(product)
+                    .quantity(inventoryDTO.getQuantity())
+                    .unitPrice(inventoryDTO.getUnitPrice())
+                    .build();
+            System.out.println("Branch inventory built: " + inventory.getQuantity() + " units");
+        }
+        
+        System.out.println("Before save - Quantity: " + inventory.getQuantity());
         Inventory savedInventory = inventoryRepository.save(inventory);
-        return InventoryMapper.toDTO(savedInventory);
+        System.out.println("After save - ID: " + savedInventory.getId() + ", Quantity: " + savedInventory.getQuantity());
+        System.out.println("Returning DTO...");
+        InventoryDTO result = InventoryMapper.toDTO(savedInventory);
+        System.out.println("DTO returned with quantity: " + result.getQuantity());
+        System.out.println("=== INVENTORY CREATED SUCCESSFULLY ===\n");
+        return result;
     }
 
     @Override
@@ -97,10 +137,42 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public List<InventoryDTO> getAllInventoryByStoreId(Long storeId) {
-        List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
-        return inventories.stream()
-                .map(InventoryMapper::toDTO)
-                .collect(Collectors.toList());
+        System.out.println("\n=== GET ALL INVENTORY BY STORE ===");
+        System.out.println("Store ID: " + storeId);
+        
+        try {
+            List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
+            System.out.println("Query returned: " + inventories.size() + " items");
+            
+            if (inventories.isEmpty()) {
+                System.out.println("WARNING: Query returned 0 items!");
+                // Try alternate query to debug
+                System.out.println("Trying findWarehouseInventoryByStoreId...");
+                List<Inventory> warehouseInventories = inventoryRepository.findWarehouseInventoryByStoreId(storeId);
+                System.out.println("Warehouse query returned: " + warehouseInventories.size() + " items");
+            }
+            
+            inventories.forEach(inv -> {
+                String branchInfo = (inv.getBranch() != null) ? "Branch: " + inv.getBranch().getId() : "Warehouse (NULL)";
+                System.out.println("  - ID: " + inv.getId() + 
+                                 ", Product: " + inv.getProduct().getName() +
+                                 ", Qty: " + inv.getQuantity() +
+                                 ", " + branchInfo);
+            });
+            
+            List<InventoryDTO> dtos = inventories.stream()
+                    .map(InventoryMapper::toDTO)
+                    .collect(Collectors.toList());
+            
+            System.out.println("Converted to " + dtos.size() + " DTOs");
+            System.out.println("=== GET ALL INVENTORY COMPLETED ===\n");
+            
+            return dtos;
+        } catch (Exception e) {
+            System.err.println("ERROR in getAllInventoryByStoreId: " + e.getMessage());
+            e.printStackTrace();
+            return new java.util.ArrayList<>();
+        }
     }
 
     @Override
@@ -145,5 +217,20 @@ public class InventoryServiceImpl implements InventoryService {
                 .sorted(Comparator.comparingInt(Inventory::getQuantity))
                 .map(InventoryMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InventoryDTO> getWarehouseInventoryByStoreId(Long storeId) {
+        List<Inventory> inventories = inventoryRepository.findWarehouseInventoryByStoreId(storeId);
+        return inventories.stream()
+                .map(InventoryMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public InventoryDTO getWarehouseInventoryByProductAndStore(Long productId, Long storeId) throws Exception {
+        Inventory inventory = inventoryRepository.findWarehouseInventoryByProductAndStore(productId, storeId)
+                .orElseThrow(() -> new Exception("Product not found in warehouse inventory"));
+        return InventoryMapper.toDTO(inventory);
     }
 }

@@ -55,6 +55,14 @@ public class PublicController {
             request.setStatus("PENDING");
             request.setPaymentStatus("PENDING");
             
+            // Set defaults for estimated values
+            if (request.getEstimatedBranches() == null || request.getEstimatedBranches() < 1) {
+                request.setEstimatedBranches(1);
+            }
+            if (request.getEstimatedUsers() == null || request.getEstimatedUsers() < 1) {
+                request.setEstimatedUsers(1);
+            }
+            
             // Save registration request
             storeRegistrationRequestRepository.save(request);
             

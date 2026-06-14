@@ -266,21 +266,19 @@ public class StoreServiceImpl implements StoreService {
         store.setFullName(ownerName);
         store.setStoreAddress(address);
         
-        // Set contact information - ensure StoreContact is initialized
-        StoreContact contact = StoreContact.builder()
-                .address(address != null ? address : "")
-                .phone(phone != null ? phone : "")
-                .email(email != null ? email : "")
-                .build();
+        // CRITICAL: Set contact information - ensure ALL fields are preserved
+        StoreContact contact = new StoreContact();
+        contact.setAddress(address != null ? address : "");
+        contact.setPhone(phone != null ? phone : "");
+        contact.setEmail(email != null ? email : "");
         store.setContact(contact);
         
         Store savedStore = storeRepository.save(store);
         
-        // Log for debugging
         System.out.println("✅ Store created: " + storeName + 
-            " | Email: " + email + 
-            " | Contact Email: " + (savedStore.getContact() != null ? savedStore.getContact().getEmail() : "NULL") +
-            " | Subscription: " + savedStore.getSubscriptionPlan());
+            " | Email from registration: " + email + 
+            " | Contact Email in DB: " + (savedStore.getContact() != null ? savedStore.getContact().getEmail() : "NULL") +
+            " | Store ID: " + savedStore.getId());
         
         return savedStore;
     }

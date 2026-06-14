@@ -26,7 +26,18 @@ public class InventoryController {
             @RequestBody InventoryDTO inventoryDTO,
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
-        ownershipGuard.requireBranchAccess(user, inventoryDTO.getBranchId());
+        
+        // For branch inventory, check branch access
+        if (inventoryDTO.getBranchId() != null) {
+            ownershipGuard.requireBranchAccess(user, inventoryDTO.getBranchId());
+        }
+        // For warehouse inventory, check store access
+        else if (inventoryDTO.getStoreId() != null) {
+            ownershipGuard.requireStoreAccess(user, inventoryDTO.getStoreId());
+        } else {
+            throw new Exception("Either branchId or storeId must be provided");
+        }
+        
         return ResponseEntity.ok(inventoryService.createInventory(inventoryDTO));
     }
 
@@ -72,9 +83,20 @@ public class InventoryController {
     public ResponseEntity<List<InventoryDTO>> getInventoryByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {
+        System.out.println("CONTROLLER: GET /api/inventories/store/" + storeId);
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
-        return ResponseEntity.ok(inventoryService.getAllInventoryByStoreId(storeId));
+        // Use warehouse inventory query which is confirmed working with native SQL
+        List<InventoryDTO> warehouse = inventoryService.getWarehouseInventoryByStoreId(storeId);
+        List<InventoryDTO> branches = inventoryService.getAllInventoryByStoreId(storeId)
+                .stream()
+                .filter(i -> i.getBranchId() != null)
+                .collect(java.util.stream.Collectors.toList());
+        List<InventoryDTO> result = new java.util.ArrayList<>();
+        result.addAll(warehouse);
+        result.addAll(branches);
+        System.out.println("CONTROLLER: Returning " + result.size() + " items (" + warehouse.size() + " warehouse + " + branches.size() + " branch)");
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/branch/{branchId}/product/{productId}")
@@ -105,5 +127,25 @@ public class InventoryController {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
         return ResponseEntity.ok(inventoryService.getLowStockItemsByStore(storeId, threshold));
+    }
+
+    // Warehouse inventory endpoints
+    @GetMapping("/warehouse/store/{storeId}")
+    public ResponseEntity<List<InventoryDTO>> getWarehouseInventory(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+        return ResponseEntity.ok(inventoryService.getWarehouseInventoryByStoreId(storeId));
+    }
+
+    @GetMapping("/warehouse/store/{storeId}/product/{productId}")
+    public ResponseEntity<InventoryDTO> getWarehouseInventoryByProduct(
+            @PathVariable Long storeId,
+            @PathVariable Long productId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+        return ResponseEntity.ok(inventoryService.getWarehouseInventoryByProductAndStore(productId, storeId));
     }
 }

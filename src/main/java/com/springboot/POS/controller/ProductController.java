@@ -8,9 +8,6 @@ import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,15 +31,12 @@ public class ProductController {
     }
 
     @GetMapping("/store/{storeId}")
-    public ResponseEntity<Page<ProductDTO>> getByStoreId(
+    public ResponseEntity<List<ProductDTO>> getByStoreId(
             @PathVariable Long storeId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(productService.getProductsByStoreId(storeId, pageable));
+        return ResponseEntity.ok(productService.getProductsByStoreId(storeId));
     }
 
     @PatchMapping("/{id}")

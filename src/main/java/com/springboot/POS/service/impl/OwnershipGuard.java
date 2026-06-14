@@ -17,6 +17,15 @@ public class OwnershipGuard {
     // Throws if the user does not belong to the given store
     public void requireStoreAccess(User user, Long storeId) throws UserException {
         if (user.getRole() == UserRole.ROLE_ADMIN) return;
+        if (user.getRole() == UserRole.ROLE_STORE_ADMIN || user.getRole() == UserRole.ROLE_STORE_MANAGER) {
+            Long userStoreId = resolveStoreId(user);
+            System.out.println("requireStoreAccess: user=" + user.getEmail() + ", userStoreId=" + userStoreId + ", requestedStoreId=" + storeId);
+            if (userStoreId == null || !userStoreId.equals(storeId)) {
+                throw new UserException("Access denied: resource does not belong to your store");
+            }
+            return;
+        }
+        // Branch-level users: resolve store through branch
         Long userStoreId = resolveStoreId(user);
         if (userStoreId == null || !userStoreId.equals(storeId)) {
             throw new UserException("Access denied: resource does not belong to your store");
@@ -43,6 +52,7 @@ public class OwnershipGuard {
         if (user.getStore() != null) return user.getStore().getId();
         if (user.getBranch() != null && user.getBranch().getStore() != null)
             return user.getBranch().getStore().getId();
+        System.out.println("resolveStoreId: WARNING - could not resolve storeId for user: " + user.getEmail() + ", role=" + user.getRole());
         return null;
     }
 }

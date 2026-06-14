@@ -17,7 +17,7 @@ public class InventoryDTO {
 
     private Long id;
 
-    @NotNull(message = "Branch is required")
+    // NULL = Warehouse inventory, NOT NULL = Branch inventory
     private Long branchId;
     
     private String branchName;
@@ -34,6 +34,12 @@ public class InventoryDTO {
     @NotNull(message = "Quantity is required")
     @Min(value = 0, message = "Quantity cannot be negative")
     private Integer quantity;
+
+    // Unit price for value calculation
+    private Double unitPrice;
+
+    // Store ID (for warehouse inventory when branchId is null)
+    private Long storeId;
 
     private LocalDateTime lastUpdate;
     
