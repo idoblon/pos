@@ -149,85 +149,60 @@ public class RestockRequestServiceImpl implements RestockRequestService {
     @Override
     @Transactional
     public RestockRequestDTO fulfillRequest(Long requestId, Integer receivedQuantity, User user) throws Exception {
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Starting fulfillRequest for requestId: " + requestId);
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Received quantity: " + receivedQuantity);
-        System.out.println("🔍 FULFILL REQUEST DEBUG - User: " + user.getFullName() + " (ID: " + user.getId() + ")");
-        
         RestockRequest request = restockRequestRepository.findById(requestId)
                 .orElseThrow(() -> new Exception("Restock request not found"));
 
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Found request: " + request.getId());
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Request status: " + request.getStatus());
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Product ID: " + request.getProduct().getId());
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Branch ID: " + request.getBranch().getId());
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Requested quantity: " + request.getRequestedQuantity());
-
         if (request.getStatus() != RestockStatus.APPROVED) {
-            System.out.println("❌ FULFILL REQUEST DEBUG - Request status is not APPROVED: " + request.getStatus());
             throw new Exception("Only approved requests can be fulfilled");
         }
 
-        // Use received quantity if provided, otherwise use requested quantity
-        Integer quantityToAdd = (receivedQuantity != null && receivedQuantity > 0) 
-            ? receivedQuantity 
-            : request.getRequestedQuantity();
-        
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Quantity to add: " + quantityToAdd);
+        Integer quantityToAdd = (receivedQuantity != null && receivedQuantity > 0)
+                ? receivedQuantity
+                : request.getRequestedQuantity();
 
-        // Update inventory
         List<Inventory> inventoryList = inventoryRepository.findByProductIdAndBranchId(
                 request.getProduct().getId(),
                 request.getBranch().getId()
         );
-        
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Found " + inventoryList.size() + " inventory records");
-        
+
+        Inventory inventory;
         if (inventoryList.isEmpty()) {
-            System.out.println("❌ FULFILL REQUEST DEBUG - No inventory found for productId: " + request.getProduct().getId() + ", branchId: " + request.getBranch().getId());
-            throw new Exception("Inventory not found for product " + request.getProduct().getName() + " in branch " + request.getBranch().getName());
+            inventory = Inventory.builder()
+                    .branch(request.getBranch())
+                    .product(request.getProduct())
+                    .store(request.getBranch().getStore())
+                    .quantity(0)
+                    .unitPrice(request.getProduct().getSellingPrice())
+                    .build();
+        } else {
+            inventory = inventoryList.get(0);
         }
-        
-        Inventory inventory = inventoryList.get(0);
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Current inventory quantity: " + inventory.getQuantity());
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Inventory ID: " + inventory.getId());
-        
-        Integer oldQuantity = inventory.getQuantity();
-        Integer newQuantity = oldQuantity + quantityToAdd;
-        
+        Integer newQuantity = inventory.getQuantity() + quantityToAdd;
         inventory.setQuantity(newQuantity);
         Inventory savedInventory = inventoryRepository.save(inventory);
-        
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Updated inventory from " + oldQuantity + " to " + newQuantity);
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Saved inventory quantity: " + savedInventory.getQuantity());
 
-        // Record stock movement
-        try {
-            stockMovementService.recordMovement(
-                    inventory.getId(),
-                    com.springboot.POS.domain.StockMovementType.RESTOCK,
-                    quantityToAdd,
-                    receivedQuantity != null 
-                        ? String.format("Restock fulfilled - Received %d of %d requested", receivedQuantity, request.getRequestedQuantity())
-                        : "Restock request fulfilled",
-                    "RestockRequest",
-                    request.getId(),
-                    user
-            );
-            System.out.println("✅ FULFILL REQUEST DEBUG - Stock movement recorded successfully");
-        } catch (Exception e) {
-            System.out.println("❌ FULFILL REQUEST DEBUG - Failed to record stock movement: " + e.getMessage());
-            e.printStackTrace();
+        if (user != null) {
+            try {
+                stockMovementService.recordMovement(
+                        inventory.getId(),
+                        com.springboot.POS.domain.StockMovementType.RESTOCK,
+                        quantityToAdd,
+                        receivedQuantity != null
+                                ? String.format("Restock fulfilled - Received %d of %d requested", receivedQuantity, request.getRequestedQuantity())
+                                : "Restock request fulfilled",
+                        "RestockRequest",
+                        request.getId(),
+                        user
+                );
+            } catch (Exception e) {
+                System.err.println("Failed to record stock movement: " + e.getMessage());
+            }
         }
 
-        // Update request with received quantity
         request.setReceivedQuantity(quantityToAdd);
         request.setStatus(RestockStatus.FULFILLED);
         RestockRequest saved = restockRequestRepository.save(request);
-        
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Updated request status to FULFILLED");
-        System.out.println("🔍 FULFILL REQUEST DEBUG - Request received quantity set to: " + saved.getReceivedQuantity());
 
-        // Send email to branch manager
         try {
             emailService.sendRestockFulfilledEmail(
                     request.getRequestedBy().getEmail(),
@@ -236,12 +211,10 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                     quantityToAdd,
                     savedInventory.getQuantity()
             );
-            System.out.println("✅ FULFILL REQUEST DEBUG - Email sent successfully");
         } catch (Exception e) {
-            System.out.println("❌ FULFILL REQUEST DEBUG - Failed to send email: " + e.getMessage());
+            System.err.println("Failed to send restock fulfilled email: " + e.getMessage());
         }
 
-        System.out.println("✅ FULFILL REQUEST DEBUG - fulfillRequest completed successfully");
         return RestockRequestMapper.toDTO(saved);
     }
 

@@ -36,7 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/hash/**").permitAll()  // Allow hash generation endpoints
                         .requestMatchers("/api/public/**").permitAll()  // Allow public endpoints like store registration
-                        .requestMatchers("/api/restock-requests/**").permitAll()  // Temporarily allow all restock endpoints
+                        .requestMatchers("/api/restock-requests/**").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class

@@ -73,33 +73,12 @@ public class RestockRequestController {
     public ResponseEntity<RestockRequestDTO> fulfill(
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Integer> body,
-            @RequestHeader(value = "Authorization", required = false) String jwt) {
+            @RequestHeader("Authorization") String jwt) {
         try {
-            System.out.println("🔍 CONTROLLER DEBUG - Fulfill request received for ID: " + id);
-            System.out.println("🔍 CONTROLLER DEBUG - Request body: " + body);
-            System.out.println("🔍 CONTROLLER DEBUG - JWT header: " + (jwt != null ? "Present" : "Missing"));
-            
-            User user = null;
-            if (jwt != null && !jwt.isEmpty()) {
-                try {
-                    user = userService.getUserFromJwtToken(jwt);
-                    System.out.println("🔍 CONTROLLER DEBUG - User: " + user.getFullName() + " (ID: " + user.getId() + ")");
-                } catch (Exception e) {
-                    System.out.println("⚠️ CONTROLLER DEBUG - JWT validation failed: " + e.getMessage());
-                    // For debugging, continue without user validation
-                }
-            }
-            
+            User user = userService.getUserFromJwtToken(jwt);
             Integer receivedQuantity = (body != null) ? body.get("receivedQuantity") : null;
-            System.out.println("🔍 CONTROLLER DEBUG - Extracted receivedQuantity: " + receivedQuantity);
-            
-            RestockRequestDTO result = restockRequestService.fulfillRequest(id, receivedQuantity, user);
-            System.out.println("✅ CONTROLLER DEBUG - Fulfill request completed successfully");
-            
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(restockRequestService.fulfillRequest(id, receivedQuantity, user));
         } catch (Exception e) {
-            System.err.println("❌ CONTROLLER DEBUG - Fulfill request failed: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(500).build();
         }
     }

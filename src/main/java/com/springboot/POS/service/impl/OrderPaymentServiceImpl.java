@@ -149,13 +149,12 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
 
     @Override
     public boolean isPaymentMethodEnabled(Long storeId, PaymentType type) {
-        // CASH is always allowed
         if (type == PaymentType.CASH) return true;
 
         return paymentConfigRepository
                 .findByStoreIdAndPaymentType(storeId, type)
                 .map(StorePaymentConfig::getIsEnabled)
-                .orElse(false);
+                .orElse(true); // allow if no config row exists yet
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

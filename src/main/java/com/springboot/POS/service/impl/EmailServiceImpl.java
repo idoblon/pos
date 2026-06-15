@@ -5,6 +5,7 @@ import com.springboot.POS.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +14,7 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Async
     @Override
     public void sendAccountCreatedEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -34,6 +36,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendWelcomeEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -50,6 +53,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendPasswordResetEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -66,6 +70,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendOrderConfirmationEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -85,6 +90,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendRefundConfirmationEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -104,6 +110,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendShiftReportEmail(EmailRequest request) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -122,6 +129,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendRestockRequestEmail(String toEmail, String toName, String branchName, String productName, Integer requestedQty, Integer currentStock) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -142,6 +150,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendRestockApprovedEmail(String toEmail, String toName, String productName, Integer approvedQty) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -160,6 +169,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendRestockRejectedEmail(String toEmail, String toName, String productName, String reason) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -178,6 +188,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendRestockFulfilledEmail(String toEmail, String toName, String productName, Integer fulfilledQty, Integer newStock) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -197,6 +208,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendStoreRegistrationNotification(String adminEmail, String storeName, String ownerName, String ownerEmail, String subscriptionPlan) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -218,6 +230,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendStoreRegistrationApprovalNotification(String applicantEmail, String ownerName, String storeName, String subscriptionPlan) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -240,6 +253,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -259,6 +273,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendStoreRegistrationRejected(String applicantEmail, String ownerName, String storeName, String rejectionReason) {
         SimpleMailMessage message = new SimpleMailMessage();
