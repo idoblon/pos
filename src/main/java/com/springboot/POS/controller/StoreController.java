@@ -88,4 +88,15 @@ public class StoreController {
         apiResponse.setMessage("Store deleted successfully");
         return ResponseEntity.ok(apiResponse);
     }
+
+    @PostMapping("/admin/backfill-subscription-dates")
+    public ResponseEntity<ApiResponse> backfillSubscriptionDates(
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        int count = storeService.backfillSubscriptionDates();
+        ApiResponse apiResponse = new ApiResponse();
+        apiResponse.setMessage("Backfilled subscription dates for " + count + " stores.");
+        apiResponse.setSuccess(true);
+        return ResponseEntity.ok(apiResponse);
+    }
 }

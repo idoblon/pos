@@ -28,7 +28,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
         // Check if email already exists
-        User existingUser = userRepository.findByEmail(employee.getEmail());
+        User existingUser = userRepository.findByEmail(employee.getEmail()).orElse(null);
         if (existingUser != null) {
             throw new Exception("Email already registered");
         }
@@ -63,7 +63,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public UserDTO createBranchEmployee(UserDTO employee, Long branchId) throws Exception {
         // Check if email already exists
-        User existingUser = userRepository.findByEmail(employee.getEmail());
+        User existingUser = userRepository.findByEmail(employee.getEmail()).orElse(null);
         if (existingUser != null) {
             throw new Exception("Email already registered");
         }

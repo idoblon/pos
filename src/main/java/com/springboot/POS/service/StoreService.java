@@ -22,4 +22,6 @@ public interface StoreService {
     StoreDTO moderateStore(Long id, StoreStatus status) throws Exception;
     void updateSubscriptionPlan(Long storeId, String subscriptionPlan) throws Exception;
 
+    int backfillSubscriptionDates();
+
 }

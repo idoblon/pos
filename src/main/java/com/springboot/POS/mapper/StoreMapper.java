@@ -23,6 +23,10 @@ public class StoreMapper {
         storeDTO.setPhone(store.getContact() != null ? store.getContact().getPhone() : null);
         storeDTO.setStoreAddress(store.getStoreAddress());
         storeDTO.setSubscriptionPlan(store.getSubscriptionPlan());
+        storeDTO.setSubscriptionPurchaseDate(store.getSubscriptionPurchaseDate());
+        storeDTO.setSubscriptionExpiry(store.getSubscriptionExpiry());
+        storeDTO.setSubscriptionStatus(store.getSubscriptionStatus());
+        storeDTO.setSubscriptionRenewalCount(store.getSubscriptionRenewalCount());
         storeDTO.setEstimatedBranches(store.getEstimatedBranches());
         storeDTO.setEstimatedUsers(store.getEstimatedUsers());
         storeDTO.setTotalRevenue(store.getTotalRevenue());

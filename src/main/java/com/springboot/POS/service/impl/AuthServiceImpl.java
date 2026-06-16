@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
         if (userDto.getRole() == null) {
             throw new UserException("Role is required");
         }
-        User user = userRepository.findByEmail(userDto.getEmail());
+        User user = userRepository.findByEmail(userDto.getEmail()).orElse(null);
         if (user != null){
             throw new UserException("email id already registered ! ");
         }
@@ -174,7 +174,7 @@ public class AuthServiceImpl implements AuthService {
         String role = authorities.iterator().next().getAuthority();
         String jwt = jwtProvider.generateToken(authentication);
 
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new UserException("User not found"));
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
@@ -194,7 +194,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse refreshToken(String jwt) throws UserException {
         String email = jwtProvider.getEmailFromToken(jwt);
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             throw new UserException("User not found");
         }

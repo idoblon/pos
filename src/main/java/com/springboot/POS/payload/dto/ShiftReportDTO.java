@@ -1,6 +1,7 @@
 package com.springboot.POS.payload.dto;
 
 import com.springboot.POS.modal.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,10 +12,12 @@ import java.util.List;
 @Builder
 public class ShiftReportDTO {
 
-
     private Long id;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime shiftStart;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime shiftEnd;
 
     private Double totalSales;

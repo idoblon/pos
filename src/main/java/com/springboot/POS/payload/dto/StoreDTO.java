@@ -33,6 +33,10 @@ public class StoreDTO {
     private String phone;
     private String storeAddress;
     private String subscriptionPlan;
+    private LocalDateTime subscriptionPurchaseDate;
+    private LocalDateTime subscriptionExpiry;
+    private String subscriptionStatus;
+    private Integer subscriptionRenewalCount;
     private Integer estimatedBranches;
     private Integer estimatedUsers;
     private Double totalRevenue;

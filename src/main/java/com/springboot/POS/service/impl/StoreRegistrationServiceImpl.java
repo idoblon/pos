@@ -3,6 +3,7 @@ package com.springboot.POS.service.impl;
 import com.springboot.POS.domain.UserRole;
 import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.StoreRegistrationRequest;
+import com.springboot.POS.modal.SubscriptionPayment;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.repository.StoreRepository;
@@ -100,7 +101,16 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
                 request.getEmail()
             );
             store.setRegistrationRequestId(requestId);
-            store.setApprovedAt(LocalDateTime.now());
+            LocalDateTime approvedAt = LocalDateTime.now();
+            store.setApprovedAt(approvedAt);
+            // Set subscription dates from payment or approval time
+            SubscriptionPayment payment = paymentService.getPaymentByRegistrationId(requestId);
+            LocalDateTime purchaseDate = (payment != null && payment.getPaidAt() != null)
+                    ? payment.getPaidAt() : approvedAt;
+            store.setSubscriptionPurchaseDate(purchaseDate);
+            store.setSubscriptionExpiry(purchaseDate.plusYears(1));
+            store.setSubscriptionStatus("ACTIVE");
+            store.setSubscriptionRenewalCount(0);
             User storeAdmin = userService.createStoreAdminWithEncodedPassword(
                 request.getOwnerName(), request.getEmail(), request.getPassword(), store
             );

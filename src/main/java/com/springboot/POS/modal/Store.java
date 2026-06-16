@@ -34,6 +34,21 @@ public class Store {
     @Column(name = "subscription_plan")
     private String subscriptionPlan; // BASIC, PROFESSIONAL, ENTERPRISE
     
+    @Column(name = "subscription_purchase_date")
+    private LocalDateTime subscriptionPurchaseDate;
+    
+    @Column(name = "subscription_expiry")
+    private LocalDateTime subscriptionExpiry;
+    
+    @Column(name = "subscription_status")
+    private String subscriptionStatus; // ACTIVE, EXPIRED, EXPIRING_SOON, SUSPENDED
+    
+    @Column(name = "subscription_renewal_count")
+    private Integer subscriptionRenewalCount = 0;
+    
+    @Column(name = "last_subscription_renewal")
+    private LocalDateTime lastSubscriptionRenewal;
+    
     @Column(name = "estimated_branches")
     private Integer estimatedBranches;
     
@@ -96,6 +111,20 @@ public class Store {
         // Ensure subscription plan defaults to BASIC if null
         if (subscriptionPlan == null || subscriptionPlan.trim().isEmpty()) {
             subscriptionPlan = "BASIC";
+        }
+        // Initialize subscription dates if not set
+        if (subscriptionPurchaseDate == null) {
+            subscriptionPurchaseDate = LocalDateTime.now();
+        }
+        if (subscriptionExpiry == null) {
+            // Set expiry to 1 year from purchase date
+            subscriptionExpiry = subscriptionPurchaseDate.plusYears(1);
+        }
+        if (subscriptionStatus == null) {
+            subscriptionStatus = "ACTIVE";
+        }
+        if (subscriptionRenewalCount == null) {
+            subscriptionRenewalCount = 0;
         }
     }
 

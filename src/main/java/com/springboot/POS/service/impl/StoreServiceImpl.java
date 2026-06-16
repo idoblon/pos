@@ -291,4 +291,56 @@ public class StoreServiceImpl implements StoreService {
         store.setSubscriptionPlan(subscriptionPlan);
         storeRepository.save(store);
     }
+
+    @Override
+    public int backfillSubscriptionDates() {
+        List<Store> stores = storeRepository.findAll();
+        int updated = 0;
+        for (Store store : stores) {
+            boolean needsUpdate = store.getSubscriptionPurchaseDate() == null
+                    || store.getSubscriptionExpiry() == null
+                    || store.getSubscriptionStatus() == null
+                    || store.getSubscriptionStatus().isBlank();
+
+            if (!needsUpdate) continue;
+
+            // Determine purchase date: prefer registration processedAt, then approvedAt, then createdAt
+            java.time.LocalDateTime purchaseDate = null;
+            StoreRegistrationRequest reg = resolveRegistrationRequest(store);
+            if (reg != null) {
+                purchaseDate = reg.getProcessedAt() != null ? reg.getProcessedAt() : reg.getCreatedAt();
+                // Also fix subscription plan from registration if missing
+                if (isBlank(store.getSubscriptionPlan()) && !isBlank(reg.getSubscriptionPlan())) {
+                    store.setSubscriptionPlan(reg.getSubscriptionPlan().toUpperCase());
+                }
+            }
+            if (purchaseDate == null) {
+                purchaseDate = store.getApprovedAt() != null ? store.getApprovedAt() : store.getCreatedAt();
+            }
+            if (purchaseDate == null) {
+                purchaseDate = java.time.LocalDateTime.now();
+            }
+
+            if (store.getSubscriptionPurchaseDate() == null) {
+                store.setSubscriptionPurchaseDate(purchaseDate);
+            }
+            if (store.getSubscriptionExpiry() == null) {
+                store.setSubscriptionExpiry(store.getSubscriptionPurchaseDate().plusYears(1));
+            }
+            if (store.getSubscriptionStatus() == null || store.getSubscriptionStatus().isBlank()) {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(now, store.getSubscriptionExpiry());
+                if (daysLeft < 0) store.setSubscriptionStatus("EXPIRED");
+                else if (daysLeft <= 30) store.setSubscriptionStatus("EXPIRING_SOON");
+                else store.setSubscriptionStatus("ACTIVE");
+            }
+            if (store.getSubscriptionRenewalCount() == null) {
+                store.setSubscriptionRenewalCount(0);
+            }
+
+            storeRepository.save(store);
+            updated++;
+        }
+        return updated;
+    }
 }

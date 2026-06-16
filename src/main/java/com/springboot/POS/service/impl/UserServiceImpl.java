@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
     public User getUserFromJwtToken(String token) throws UserException {
 
         String email = jwtProvider.getEmailFromToken(token);
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElse(null);
         if(user == null){
             throw new UserException("Invalid Token ");
         }
@@ -42,7 +42,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getCurrentUser() throws UserException {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElse(null);
         if ( user == null){
             throw new UserException("User not found");
         }
@@ -51,7 +51,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getUserByEmail(String email) throws UserException {
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email).orElse(null);
         if ( user == null){
             throw new UserException("User not found");
         }
