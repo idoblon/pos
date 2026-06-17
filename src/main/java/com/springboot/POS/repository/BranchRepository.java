@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface BranchRepository extends JpaRepository<Branch, Long> {
 
@@ -13,4 +14,6 @@ public interface BranchRepository extends JpaRepository<Branch, Long> {
     
     @Query("SELECT b FROM Branch b WHERE b.store.id = :storeId AND (b.deleted = false OR b.deleted IS NULL)")
     List<Branch> findByStoreIdAndDeletedFalse(@Param("storeId") Long storeId);
+
+    Optional<Branch> findByManagerId(Long managerId);
 }

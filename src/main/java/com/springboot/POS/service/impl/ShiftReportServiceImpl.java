@@ -1,6 +1,7 @@
 package com.springboot.POS.service.impl;
 
 import com.springboot.POS.domain.PaymentType;
+import com.springboot.POS.domain.UserRole;
 import com.springboot.POS.exceptions.UserException;
 import com.springboot.POS.mapper.*;
 import com.springboot.POS.modal.*;
@@ -40,6 +41,9 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
         LocalDateTime shiftStart = LocalDateTime.now();
         Branch branch = currentUser.getBranch();
+        if (branch == null && currentUser.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(currentUser.getId()).orElse(null);
+        }
 
         ShiftReport shiftReport = ShiftReport.builder()
                 .cashier(currentUser)
@@ -125,7 +129,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     @Override
     public List<ShiftReportDTO> getShiftReportByBranchId(Long branchId) {
-        List<ShiftReport> reports = shiftReportRepository.findByBranchId(branchId);
+        List<ShiftReport> reports = shiftReportRepository.findByBranchIdIncludingCashierBranch(branchId);
         return reports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 

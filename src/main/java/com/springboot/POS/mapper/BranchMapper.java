@@ -19,6 +19,7 @@ public class BranchMapper {
                 .openTime(branch.getOpenTime())
                 .workingDays(branch.getWorkingDays())
                 .storeId(branch.getStore()!=null?branch.getStore().getId() : null)
+                .manager(branch.getManager() != null ? UserMapper.toDTO(branch.getManager()) : null)
                 .createdAt(branch.getCreatedAt())
                 .updatedAt(branch.getUpdatedAt())
                 .build();
