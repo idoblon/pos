@@ -25,6 +25,9 @@ public class Customer {
 
     private String address;
 
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
+
     @Column(name = "created_at")
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
