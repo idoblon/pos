@@ -36,7 +36,14 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(currentUser);
 
         if (activeShift.isPresent()) {
-            return ShiftReportMapper.toDTO(activeShift.get());
+            ShiftReport stale = activeShift.get();
+            // If the stale shift started on a different day, force-close it and start fresh
+            if (!stale.getShiftStart().toLocalDate().equals(java.time.LocalDate.now())) {
+                stale.setShiftEnd(stale.getShiftStart().toLocalDate().atTime(23, 59, 59));
+                shiftReportRepository.save(stale);
+            } else {
+                return ShiftReportMapper.toDTO(stale);
+            }
         }
 
         LocalDateTime shiftStart = LocalDateTime.now();
@@ -59,9 +66,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public ShiftReportDTO endShift(Long shiftReportId, LocalDateTime shiftEnd, Double declaredCash) throws Exception {
         User currentUser = userService.getCurrentUser();
 
-        ShiftReport shiftReport = shiftReportRepository
-                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(currentUser)
-                .orElseThrow(() -> new Exception("Shift not found"));
+        Optional<ShiftReport> activeOpt = shiftReportRepository
+                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(currentUser);
+
+        if (activeOpt.isEmpty()) {
+            throw new Exception("No active shift found");
+        }
+        ShiftReport shiftReport = activeOpt.get();
 
         shiftReport.setShiftEnd(shiftEnd);
 
@@ -106,8 +117,8 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shiftReport.setExpectedCash(expectedCash);
         shiftReport.setCashDiscrepancy(discrepancy);
         shiftReport.setReconciliationStatus(reconciliationStatus);
-        shiftReport.setRecentOrders(getRecentOrders(orders));
-        shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
+        shiftReport.setRecentOrders(new ArrayList<>(getRecentOrders(orders)));
+        shiftReport.setTopSellingProducts(new ArrayList<>(getTopSellingProducts(orders)));
         shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
         shiftReport.setRefunds(refunds);
 
