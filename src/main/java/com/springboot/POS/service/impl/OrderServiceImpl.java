@@ -16,9 +16,13 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +48,6 @@ public class OrderServiceImpl implements OrderService {
             throw new Exception("Cashier's branch not found");
         }
 
-        // Resolve payment type (frontend may send paymentMethod string or paymentType enum)
         PaymentType paymentType = orderDTO.getPaymentType();
         if (paymentType == null) {
             throw new Exception("Payment method is required");
@@ -52,67 +55,110 @@ public class OrderServiceImpl implements OrderService {
 
         Long storeId = branch.getStore() != null ? branch.getStore().getId() : null;
 
-        // ── Payment verification BEFORE touching any DB records ───────────────
         if (storeId != null && !orderPaymentService.isPaymentMethodEnabled(storeId, paymentType)) {
             throw new Exception(paymentType + " payment is not enabled for this store.");
         }
 
-        // Build order items first so we know the real total
-        List<OrderItem> orderItems = orderDTO.getItems().stream().map(itemDTO -> {
-            Product product = productRepository.findById(itemDTO.getProductId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Product not found: id=" + itemDTO.getProductId()));
+        Map<Long, Integer> quantitiesByProduct = new TreeMap<>();
+        if (orderDTO.getItems() == null || orderDTO.getItems().isEmpty()) {
+            throw new IllegalArgumentException("An order must contain at least one item");
+        }
+        orderDTO.getItems().forEach(itemDTO -> {
+            if (itemDTO == null || itemDTO.getProductId() == null) {
+                throw new IllegalArgumentException("Every order item must include a product");
+            }
+            if (itemDTO.getQuantity() == null || itemDTO.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Order item quantity must be greater than zero");
+            }
+            try {
+                quantitiesByProduct.merge(itemDTO.getProductId(), itemDTO.getQuantity(), Math::addExact);
+            } catch (ArithmeticException ex) {
+                throw new IllegalArgumentException("Order item quantity is too large", ex);
+            }
+        });
+
+        List<OrderItem> orderItems = quantitiesByProduct.entrySet().stream().map(entry -> {
+            Product product = productRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + entry.getKey()));
 
             if (Boolean.TRUE.equals(product.getDeleted())) {
                 throw new EntityNotFoundException("Product no longer available: " + product.getName());
             }
 
+            if (product.getSellingPrice() == null || product.getSellingPrice() < 0) {
+                throw new IllegalStateException("Product has an invalid selling price: " + product.getId());
+            }
+
             double unitPrice = product.getSellingPrice();
             return OrderItem.builder()
                     .product(product)
-                    .quantity(itemDTO.getQuantity())
+                    .quantity(entry.getValue())
                     .unitPrice(unitPrice)
-                    .price(unitPrice * itemDTO.getQuantity())
+                    .price(BigDecimal.valueOf(unitPrice)
+                            .multiply(BigDecimal.valueOf(entry.getValue()))
+                            .setScale(2, RoundingMode.HALF_UP)
+                            .doubleValue())
                     .build();
         }).collect(Collectors.toList());
 
-        double subtotal = orderItems.stream().mapToDouble(OrderItem::getPrice).sum();
-        double taxAmount = subtotal * 0.13;
+        BigDecimal subtotal = orderItems.stream()
+                .map(item -> BigDecimal.valueOf(item.getPrice()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal taxAmount = subtotal.multiply(new BigDecimal("0.13"))
+                .setScale(2, RoundingMode.HALF_UP);
 
-        double discountAmount = 0.0;
-        if (orderDTO.getDiscount() != null && orderDTO.getDiscount() > 0) {
-            discountAmount = "percentage".equalsIgnoreCase(orderDTO.getDiscountType())
-                    ? subtotal * (orderDTO.getDiscount() / 100)
-                    : orderDTO.getDiscount();
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (orderDTO.getDiscount() != null) {
+            if (!Double.isFinite(orderDTO.getDiscount()) || orderDTO.getDiscount() < 0) {
+                throw new IllegalArgumentException("Discount must be a non-negative number");
+            }
+            BigDecimal discount = BigDecimal.valueOf(orderDTO.getDiscount());
+            if ("percentage".equalsIgnoreCase(orderDTO.getDiscountType())) {
+                if (discount.compareTo(BigDecimal.valueOf(100)) > 0) {
+                    throw new IllegalArgumentException("Percentage discount cannot exceed 100");
+                }
+                discountAmount = subtotal.multiply(discount)
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            } else {
+                if (discount.compareTo(subtotal) > 0) {
+                    throw new IllegalArgumentException("Discount cannot exceed the order subtotal");
+                }
+                discountAmount = discount.setScale(2, RoundingMode.HALF_UP);
+            }
         }
 
-        double finalTotal = subtotal + taxAmount - discountAmount;
+        BigDecimal finalTotal = subtotal.add(taxAmount).subtract(discountAmount);
 
-        // ── Verify payment with gateway / validate cash ───────────────────────
+        // Resolve reference from either paymentReference or transactionId
+        String paymentRef = orderDTO.getPaymentReference() != null
+                ? orderDTO.getPaymentReference()
+                : orderDTO.getTransactionId();
+
+        // Verify payment with gateway / validate cash
         orderPaymentService.verify(
                 paymentType,
-                orderDTO.getPaymentReference(),
+                paymentRef,
                 orderDTO.getAmountReceived(),
-                finalTotal,
+                finalTotal.doubleValue(),
                 storeId
         );
 
-        // ── Resolve customer ──────────────────────────────────────────────────
+        // Resolve customer
         Customer customer = null;
         if (orderDTO.getCustomerId() != null) {
             customer = customerRepository.findById(orderDTO.getCustomerId()).orElse(null);
         }
 
-        // ── Persist order ─────────────────────────────────────────────────────
+        // Persist order
         Order order = Order.builder()
                 .branch(branch)
                 .cashier(cashier)
                 .customer(customer)
                 .paymentType(paymentType)
-                .paymentReference(orderDTO.getPaymentReference())
-                .amountReceived(paymentType == PaymentType.CASH ? orderDTO.getAmountReceived() : finalTotal)
-                .totalAmount(finalTotal)
-                .taxAmount(taxAmount)
+                .paymentReference(paymentRef)
+                .amountReceived(paymentType == PaymentType.CASH ? orderDTO.getAmountReceived() : finalTotal.doubleValue())
+                .totalAmount(finalTotal.doubleValue())
+                .taxAmount(taxAmount.doubleValue())
                 .discount(orderDTO.getDiscount())
                 .discountType(orderDTO.getDiscountType())
                 .status(OrderStatus.COMPLETED)
@@ -121,13 +167,11 @@ public class OrderServiceImpl implements OrderService {
         orderItems.forEach(item -> item.setOrder(order));
         order.setItems(orderItems);
 
-        Order savedOrder = orderRepository.save(order);
-
-        // ── Deduct inventory after successful save ────────────────────────────
         for (OrderItem item : orderItems) {
             inventoryService.deductStock(item.getProduct().getId(), branch.getId(), item.getQuantity());
         }
 
+        Order savedOrder = orderRepository.save(order);
         return OrderMapper.toDTO(savedOrder);
     }
 
@@ -135,28 +179,19 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO getOrderById(Long id) throws Exception {
         return orderRepository.findById(id)
                 .map(OrderMapper::toDTO)
-                .orElseThrow(
-                ()-> new Exception("order not found with id" + id)
-        );
+                .orElseThrow(() -> new Exception("order not found with id" + id));
     }
 
     @Override
-    public List<OrderDTO> getOrdersByBranch(Long branchId,
-                                            Long customerId,
-                                            Long cashierId,
-                                            PaymentType paymentType,
-                                            OrderStatus status) throws Exception {
+    public List<OrderDTO> getOrdersByBranch(Long branchId, Long customerId, Long cashierId,
+                                            PaymentType paymentType, OrderStatus status) throws Exception {
         return orderRepository.findByBranchId(branchId).stream()
                 .filter(order -> customerId == null ||
-                        (order.getCustomer() != null &&
-                                order.getCustomer().getId().equals(customerId)))
+                        (order.getCustomer() != null && order.getCustomer().getId().equals(customerId)))
                 .filter(order -> cashierId == null ||
-                        order.getCashier() != null &&
-                        order.getCashier().getId().equals(cashierId))
-                .filter(order -> paymentType == null ||
-                        order.getPaymentType() == paymentType)
-                .filter(order -> status == null ||
-                        order.getStatus() == status)
+                        order.getCashier() != null && order.getCashier().getId().equals(cashierId))
+                .filter(order -> paymentType == null || order.getPaymentType() == paymentType)
+                .filter(order -> status == null || order.getStatus() == status)
                 .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
@@ -168,11 +203,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void deleteOrder(Long id) throws Exception {
-        Order order = orderRepository.findById(id).orElseThrow(
-                () -> new Exception("order not found with id " + id)
-        );
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new Exception("order not found with id " + id));
         orderRepository.delete(order);
-
     }
 
     @Override
@@ -180,26 +213,19 @@ public class OrderServiceImpl implements OrderService {
         LocalDate today = LocalDate.now();
         LocalDateTime start = today.atStartOfDay();
         LocalDateTime end = today.plusDays(1).atStartOfDay();
-
-
-        return orderRepository.findByBranchIdAndCreatedAtBetween(
-                branchId, start, end
-        ).stream().map(
-                OrderMapper::toDTO
-        ).collect(Collectors.toList());
+        return orderRepository.findByBranchIdAndCreatedAtBetween(branchId, start, end)
+                .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
     public List<OrderDTO> getOrdersByCustomerId(Long customerId) throws Exception {
-        return orderRepository.findByCustomerId(customerId).stream().map(
-                OrderMapper::toDTO
-        ).collect(Collectors.toList());
+        return orderRepository.findByCustomerId(customerId).stream()
+                .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
     public List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId) throws Exception {
-        return orderRepository.findByBranchIdOrderByCreatedAtDesc(branchId).stream().map(
-                OrderMapper::toDTO
-        ).collect(Collectors.toList());
+        return orderRepository.findByBranchIdOrderByCreatedAtDesc(branchId).stream()
+                .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 }

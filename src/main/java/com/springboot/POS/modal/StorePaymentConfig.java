@@ -9,7 +9,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "store_payment_config")
+@Table(name = "store_payment_config",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_store_payment_type",
+                columnNames = {"store_id", "payment_type"}
+        ))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,7 +28,7 @@ public class StorePaymentConfig {
     private Store store;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "payment_type", nullable = false)
     private PaymentType paymentType;
     
     @Column(nullable = false)

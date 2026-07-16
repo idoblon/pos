@@ -30,6 +30,7 @@ public class OrderDTO {
     private PaymentType paymentType;
     private String paymentMethod;    // frontend sends paymentMethod as string
     private String paymentReference; // eSewa ref / Khalti token / card last-4
+    private String transactionId;     // alias for paymentReference from frontend
     private Double amountReceived;   // CASH only
     private OrderStatus status;
     private List<OrderItemDTO> items;

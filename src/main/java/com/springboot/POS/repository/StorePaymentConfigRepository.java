@@ -12,6 +12,6 @@ import java.util.Optional;
 public interface StorePaymentConfigRepository extends JpaRepository<StorePaymentConfig, Long> {
     List<StorePaymentConfig> findByStoreId(Long storeId);
     List<StorePaymentConfig> findByStoreIdAndIsEnabled(Long storeId, Boolean isEnabled);
-    Optional<StorePaymentConfig> findByStoreIdAndPaymentType(Long storeId, PaymentType paymentType);
+    Optional<StorePaymentConfig> findFirstByStoreIdAndPaymentType(Long storeId, PaymentType paymentType);
     boolean existsByStoreIdAndPaymentType(Long storeId, PaymentType paymentType);
 }

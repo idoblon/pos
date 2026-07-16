@@ -11,6 +11,7 @@ import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.StockMovementService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InventoryServiceImpl implements InventoryService {
     private final BranchRepository branchRepository;
     private final ProductRepository productRepository;
@@ -29,11 +31,9 @@ public class InventoryServiceImpl implements InventoryService {
 
 
     @Override
+    @Transactional
     public InventoryDTO createInventory(InventoryDTO inventoryDTO) throws Exception {
-        System.out.println("\n=== CREATING INVENTORY ===");
-        System.out.println("DTO: branchId=" + inventoryDTO.getBranchId() + ", storeId=" + inventoryDTO.getStoreId());
-        System.out.println("DTO: productId=" + inventoryDTO.getProductId() + ", quantity=" + inventoryDTO.getQuantity());
-        
+        validateNonNegativeQuantity(inventoryDTO.getQuantity());
         Product product = productRepository.findById(inventoryDTO.getProductId()).orElseThrow(
                 () -> new Exception("product doesn't exist....")
         );
@@ -42,7 +42,6 @@ public class InventoryServiceImpl implements InventoryService {
         
         // Check if this is warehouse inventory (branchId is null)
         if (inventoryDTO.getBranchId() == null) {
-            System.out.println("Creating WAREHOUSE inventory...");
             // Warehouse inventory
             if (inventoryDTO.getStoreId() == null) {
                 throw new Exception("Store ID is required for warehouse inventory");
@@ -58,36 +57,29 @@ public class InventoryServiceImpl implements InventoryService {
                     .quantity(inventoryDTO.getQuantity())
                     .unitPrice(inventoryDTO.getUnitPrice())
                     .build();
-            System.out.println("Warehouse inventory built: " + inventory.getQuantity() + " units");
         } else {
-            System.out.println("Creating BRANCH inventory for branchId: " + inventoryDTO.getBranchId());
             // Branch inventory
             Branch branch = branchRepository.findById(inventoryDTO.getBranchId()).orElseThrow(
                     ()-> new Exception("branch does not exist....")
             );
             
-            inventory = Inventory.builder()
-                    .branch(branch)
-                    .store(null)  // Store reference is in branch
-                    .product(product)
-                    .quantity(inventoryDTO.getQuantity())
-                    .unitPrice(inventoryDTO.getUnitPrice())
-                    .build();
-            System.out.println("Branch inventory built: " + inventory.getQuantity() + " units");
+            inventoryRepository.upsertBranchInventory(
+                    branch.getId(), product.getId(), inventoryDTO.getQuantity(), inventoryDTO.getUnitPrice());
+            Inventory savedInventory = inventoryRepository
+                    .findByProductIdAndBranchIdWithLock(product.getId(), branch.getId())
+                    .orElseThrow(() -> new IllegalStateException("Unable to create branch inventory"));
+            return InventoryMapper.toDTO(savedInventory);
         }
         
-        System.out.println("Before save - Quantity: " + inventory.getQuantity());
         Inventory savedInventory = inventoryRepository.save(inventory);
-        System.out.println("After save - ID: " + savedInventory.getId() + ", Quantity: " + savedInventory.getQuantity());
-        System.out.println("Returning DTO...");
         InventoryDTO result = InventoryMapper.toDTO(savedInventory);
-        System.out.println("DTO returned with quantity: " + result.getQuantity());
-        System.out.println("=== INVENTORY CREATED SUCCESSFULLY ===\n");
         return result;
     }
 
     @Override
+    @Transactional
     public InventoryDTO updateInventory(Long id, InventoryDTO inventoryDTO) throws Exception {
+        validateNonNegativeQuantity(inventoryDTO.getQuantity());
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
                 () -> new Exception("inventory not found...."));
         inventory.setQuantity(inventoryDTO.getQuantity());
@@ -97,7 +89,9 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional
     public InventoryDTO updateStock(Long id, Integer quantity) throws Exception {
+        validateNonNegativeQuantity(quantity);
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(
                 () -> new Exception("inventory not found...."));
         inventory.setQuantity(quantity);
@@ -137,70 +131,68 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public List<InventoryDTO> getAllInventoryByStoreId(Long storeId) {
-        System.out.println("\n=== GET ALL INVENTORY BY STORE ===");
-        System.out.println("Store ID: " + storeId);
-        
         try {
             List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
-            System.out.println("Query returned: " + inventories.size() + " items");
-            
-            if (inventories.isEmpty()) {
-                System.out.println("WARNING: Query returned 0 items!");
-                // Try alternate query to debug
-                System.out.println("Trying findWarehouseInventoryByStoreId...");
-                List<Inventory> warehouseInventories = inventoryRepository.findWarehouseInventoryByStoreId(storeId);
-                System.out.println("Warehouse query returned: " + warehouseInventories.size() + " items");
-            }
-            
-            inventories.forEach(inv -> {
-                String branchInfo = (inv.getBranch() != null) ? "Branch: " + inv.getBranch().getId() : "Warehouse (NULL)";
-                System.out.println("  - ID: " + inv.getId() + 
-                                 ", Product: " + inv.getProduct().getName() +
-                                 ", Qty: " + inv.getQuantity() +
-                                 ", " + branchInfo);
-            });
-            
-            List<InventoryDTO> dtos = inventories.stream()
+            return inventories.stream()
                     .map(InventoryMapper::toDTO)
                     .collect(Collectors.toList());
-            
-            System.out.println("Converted to " + dtos.size() + " DTOs");
-            System.out.println("=== GET ALL INVENTORY COMPLETED ===\n");
-            
-            return dtos;
         } catch (Exception e) {
-            System.err.println("ERROR in getAllInventoryByStoreId: " + e.getMessage());
-            e.printStackTrace();
-            return new java.util.ArrayList<>();
+            log.error("Unable to load inventory for storeId={}", storeId, e);
+            throw new IllegalStateException("Unable to load store inventory", e);
         }
     }
 
     @Override
     @Transactional
     public void deductStock(Long productId, Long branchId, int quantity) throws Exception {
-        Inventory inventory = inventoryRepository
-                .findByProductIdAndBranchIdWithLock(productId, branchId)
-                .orElseThrow(() -> new Exception("Product not found in branch inventory"));
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Stock deduction quantity must be greater than zero");
+        }
+        List<Inventory> rows = inventoryRepository.findAllByProductIdAndBranchIdWithLock(productId, branchId);
+        if (rows.isEmpty()) {
+            throw new Exception("Product not found in branch inventory");
+        }
 
-        if (inventory.getQuantity() < quantity) {
+        // Auto-merge duplicates: keep the first row, sum all quantities, delete the rest
+        Inventory primary = rows.get(0);
+        if (rows.size() > 1) {
+            int total = rows.stream().mapToInt(Inventory::getQuantity).sum();
+            primary.setQuantity(total);
+            inventoryRepository.save(primary);
+            List<Inventory> duplicates = rows.subList(1, rows.size());
+            inventoryRepository.deleteAll(duplicates);
+            inventoryRepository.flush();
+        }
+
+        if (primary.getQuantity() < quantity) {
             throw new Exception("Insufficient stock for product id=" + productId
-                    + ": available=" + inventory.getQuantity()
+                    + ": available=" + primary.getQuantity()
                     + ", required=" + quantity);
         }
 
-        inventory.setQuantity(inventory.getQuantity() - quantity);
-        inventoryRepository.save(inventory);
+        primary.setQuantity(primary.getQuantity() - quantity);
+        inventoryRepository.save(primary);
     }
 
     @Override
     @Transactional
     public void addStock(Long productId, Long branchId, int quantity) throws Exception {
-        Inventory inventory = inventoryRepository
-                .findByProductIdAndBranchIdWithLock(productId, branchId)
-                .orElseThrow(() -> new Exception("Product not found in branch inventory"));
-
-        inventory.setQuantity(inventory.getQuantity() + quantity);
-        inventoryRepository.save(inventory);
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Stock addition quantity must be greater than zero");
+        }
+        List<Inventory> rows = inventoryRepository.findAllByProductIdAndBranchIdWithLock(productId, branchId);
+        if (rows.isEmpty()) {
+            throw new Exception("Product not found in branch inventory");
+        }
+        Inventory primary = rows.get(0);
+        if (rows.size() > 1) {
+            int total = rows.stream().mapToInt(Inventory::getQuantity).sum();
+            primary.setQuantity(total);
+            inventoryRepository.deleteAll(rows.subList(1, rows.size()));
+            inventoryRepository.flush();
+        }
+        primary.setQuantity(primary.getQuantity() + quantity);
+        inventoryRepository.save(primary);
     }
 
     @Override
@@ -232,5 +224,11 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = inventoryRepository.findWarehouseInventoryByProductAndStore(productId, storeId)
                 .orElseThrow(() -> new Exception("Product not found in warehouse inventory"));
         return InventoryMapper.toDTO(inventory);
+    }
+
+    private void validateNonNegativeQuantity(Integer quantity) {
+        if (quantity == null || quantity < 0) {
+            throw new IllegalArgumentException("Inventory quantity must be zero or greater");
+        }
     }
 }

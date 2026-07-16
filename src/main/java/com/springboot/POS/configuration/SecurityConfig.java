@@ -31,6 +31,13 @@ public class SecurityConfig {
 
         return http
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com blob:; " +
+                                "frame-src https://js.stripe.com https://hooks.stripe.com; " +
+                                "connect-src 'self' https://api.stripe.com"
+                        ))
+                )
                 .authorizeHttpRequests(Authorize -> Authorize
                         .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

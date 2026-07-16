@@ -23,8 +23,31 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
    @Lock(LockModeType.PESSIMISTIC_WRITE)
    @Query("SELECT i FROM Inventory i WHERE i.product.id = :productId AND i.branch.id = :branchId")
+   List<Inventory> findAllByProductIdAndBranchIdWithLock(@Param("productId") Long productId,
+                                                          @Param("branchId") Long branchId);
+
+   @Lock(LockModeType.PESSIMISTIC_WRITE)
+   @Query("SELECT i FROM Inventory i WHERE i.product.id = :productId AND i.branch.id = :branchId")
    Optional<Inventory> findByProductIdAndBranchIdWithLock(@Param("productId") Long productId,
                                                            @Param("branchId") Long branchId);
+
+   /**
+    * Inserts branch inventory or atomically adds stock to the existing row.
+    * The unique key on (branch_id, product_id) is required for this upsert.
+    */
+   @org.springframework.data.jpa.repository.Modifying
+   @Query(value = """
+           INSERT INTO inventory (branch_id, product_id, store_id, quantity, unit_price, last_update)
+           VALUES (:branchId, :productId, NULL, :quantity, :unitPrice, NOW())
+           ON DUPLICATE KEY UPDATE
+               quantity = quantity + VALUES(quantity),
+               unit_price = VALUES(unit_price),
+               last_update = NOW()
+           """, nativeQuery = true)
+   void upsertBranchInventory(@Param("branchId") Long branchId,
+                              @Param("productId") Long productId,
+                              @Param("quantity") Integer quantity,
+                              @Param("unitPrice") Double unitPrice);
 
    // Get all inventory (warehouse + branches) for a store
    @Query(value = "SELECT i.* FROM inventory i WHERE i.store_id = :storeId OR i.branch_id IN (SELECT id FROM branch WHERE store_id = :storeId)", nativeQuery = true)

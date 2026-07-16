@@ -76,7 +76,7 @@ public class StorePaymentConfigServiceImpl implements StorePaymentConfigService 
 
     @Override
     public boolean isPaymentMethodAvailable(Long storeId, PaymentType paymentType) {
-        return paymentConfigRepository.findByStoreIdAndPaymentType(storeId, paymentType)
+        return paymentConfigRepository.findFirstByStoreIdAndPaymentType(storeId, paymentType)
                 .map(StorePaymentConfig::getIsEnabled)
                 .orElse(false);
     }
