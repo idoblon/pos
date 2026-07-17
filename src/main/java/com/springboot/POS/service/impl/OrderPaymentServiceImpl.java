@@ -155,19 +155,35 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
             Stripe.apiKey = secretKey;
             long amountInCents = Math.round(amount * 100);
 
-            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+            // Use MANUAL confirmation: create intent, attach PM, then confirm
+            // This avoids return_url requirement and works for server-side POS
+            PaymentIntentCreateParams createParams = PaymentIntentCreateParams.builder()
                     .setAmount(amountInCents)
                     .setCurrency("usd")
                     .setPaymentMethod(reference)
                     .setConfirm(true)
-                    .setOffSession(true)
+                    .setAutomaticPaymentMethods(
+                        PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
+                            .setEnabled(true)
+                            .setAllowRedirects(PaymentIntentCreateParams.AutomaticPaymentMethods.AllowRedirects.NEVER)
+                            .build()
+                    )
                     .build();
 
-            PaymentIntent intent = PaymentIntent.create(params);
+            PaymentIntent intent = PaymentIntent.create(createParams);
+            String status = intent.getStatus();
 
-            if (!"succeeded".equals(intent.getStatus())) {
-                throw new Exception("Stripe payment did not succeed. Status: " + intent.getStatus());
+            if ("succeeded".equals(status) || "requires_capture".equals(status)) {
+                return;
             }
+            if ("requires_action".equals(status) || "requires_source_action".equals(status)) {
+                throw new Exception("Card requires additional authentication (3D Secure). Use a card that does not require 3DS for POS payments.");
+            }
+            throw new Exception("Stripe payment did not succeed. Status: " + status);
+        } catch (com.stripe.exception.CardException ex) {
+            throw new Exception("Card declined: " + ex.getCode() + " - " + ex.getMessage(), ex);
+        } catch (com.stripe.exception.InvalidRequestException ex) {
+            throw new Exception("Invalid Stripe request: " + ex.getMessage(), ex);
         } catch (com.stripe.exception.StripeException ex) {
             throw new Exception("Stripe error: " + ex.getMessage(), ex);
         }
@@ -178,10 +194,24 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
         if (type == PaymentType.CASH) {
             return true;
         }
-        return paymentConfigRepository
-                .findFirstByStoreIdAndPaymentType(storeId, type)
-                .map(StorePaymentConfig::getIsEnabled)
-                .orElse(false);
+        // Check store-level config first
+        var config = paymentConfigRepository.findFirstByStoreIdAndPaymentType(storeId, type);
+        if (config.isPresent()) {
+            return Boolean.TRUE.equals(config.get().getIsEnabled());
+        }
+        // Fall back to global config for CARD
+        if (type == PaymentType.CARD) {
+            return stripeSecretKey != null && !stripeSecretKey.isBlank();
+        }
+        // Fall back to global config for ESEWA
+        if (type == PaymentType.ESEWA) {
+            return defaultEsewaMerchantId != null && !defaultEsewaMerchantId.isBlank();
+        }
+        // Fall back to global config for KHALTI
+        if (type == PaymentType.KHALTI) {
+            return defaultKhaltiSecretKey != null && !defaultKhaltiSecretKey.isBlank();
+        }
+        return false;
     }
 
     private String resolveStripeSecretKey(Long storeId) {

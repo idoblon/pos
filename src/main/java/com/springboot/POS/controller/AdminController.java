@@ -1,7 +1,7 @@
 package com.springboot.POS.controller;
 
-import com.springboot.POS.modal.StoreRegistrationRequest;
 import com.springboot.POS.modal.Store;
+import com.springboot.POS.payload.dto.StoreRegistrationRequestDTO;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.StoreRegistrationService;
@@ -32,19 +32,19 @@ public class AdminController {
      */
     @GetMapping("/store-requests")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<StoreRegistrationRequest>> getStoreRequests(
+    public ResponseEntity<List<StoreRegistrationRequestDTO>> getStoreRequests(
             @RequestParam(value = "status", required = false) String status,
             @RequestHeader("Authorization") String jwt) throws Exception {
         
         log.info("Fetching store requests with status filter: {}", status);
         User admin = userService.getUserFromJwtToken(jwt);
         
-        List<StoreRegistrationRequest> allRequests = registrationService.getAllRequests();
+        List<StoreRegistrationRequestDTO> allRequests = registrationService.getAllRequests();
         log.info("Total requests in database: {}", allRequests.size());
         
         // If status parameter is provided, filter by status
         if (status != null && !status.trim().isEmpty()) {
-            List<StoreRegistrationRequest> filteredRequests = allRequests.stream()
+            List<StoreRegistrationRequestDTO> filteredRequests = allRequests.stream()
                 .filter(req -> {
                     boolean matches = status.equalsIgnoreCase(req.getStatus());
                     log.debug("Request ID: {}, Status: {}, Matches filter '{}': {}", 
@@ -153,7 +153,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> debugGetAllRequests(@RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
-        List<StoreRegistrationRequest> all = registrationService.getAllRequests();
+        List<StoreRegistrationRequestDTO> all = registrationService.getAllRequests();
         
         log.info("=== DEBUG: Total requests in DB: {} ===", all.size());
         all.forEach(req -> {

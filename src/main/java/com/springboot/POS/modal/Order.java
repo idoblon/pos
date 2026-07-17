@@ -45,6 +45,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 
+    @Enumerated(EnumType.STRING)
     private PaymentType paymentType;
 
     // Stores the gateway reference returned from the popup (eSewa ref, Khalti token, card last-4)

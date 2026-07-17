@@ -40,6 +40,7 @@ public class Refund {
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
     private PaymentType paymentType;
 
 

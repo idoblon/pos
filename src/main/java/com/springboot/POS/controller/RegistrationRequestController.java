@@ -1,7 +1,7 @@
 package com.springboot.POS.controller;
 
-import com.springboot.POS.modal.StoreRegistrationRequest;
 import com.springboot.POS.modal.User;
+import com.springboot.POS.payload.dto.StoreRegistrationRequestDTO;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.StoreRegistrationService;
 import com.springboot.POS.service.UserService;
@@ -22,7 +22,7 @@ public class RegistrationRequestController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<StoreRegistrationRequest>> getAllRequests(
+    public ResponseEntity<List<StoreRegistrationRequestDTO>> getAllRequests(
             @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(registrationService.getAllRequests());
@@ -30,7 +30,7 @@ public class RegistrationRequestController {
 
     @GetMapping("/pending")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<StoreRegistrationRequest>> getPendingRequests(
+    public ResponseEntity<List<StoreRegistrationRequestDTO>> getPendingRequests(
             @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(registrationService.getAllPendingRequests());
@@ -38,7 +38,7 @@ public class RegistrationRequestController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<StoreRegistrationRequest> getRequestById(
+    public ResponseEntity<StoreRegistrationRequestDTO> getRequestById(
             @PathVariable Long id,
             @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
