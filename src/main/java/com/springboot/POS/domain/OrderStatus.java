@@ -1,5 +1,5 @@
 package com.springboot.POS.domain;
 
 public enum OrderStatus {
-    PENDING, COMPLETED
+    PENDING, HELD, RESUMED, COMPLETED, CANCELLED
 }

@@ -23,8 +23,31 @@ public class OrderController {
     private final OwnershipGuard ownershipGuard;
 
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO order) throws Exception {
-        return ResponseEntity.ok(orderService.createOrder(order));
+    public ResponseEntity<OrderDTO> createOrder(
+            @RequestBody OrderDTO order,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) throws Exception {
+        return ResponseEntity.ok(orderService.createOrder(order, idempotencyKey));
+    }
+
+    @PostMapping("/held")
+    public ResponseEntity<OrderDTO> holdOrder(@RequestBody OrderDTO order) throws Exception {
+        return ResponseEntity.ok(orderService.holdOrder(order));
+    }
+
+    @GetMapping("/held")
+    public ResponseEntity<List<OrderDTO>> getHeldOrders() throws Exception {
+        return ResponseEntity.ok(orderService.getHeldOrders());
+    }
+
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<OrderDTO> resumeHeldOrder(@PathVariable Long id) throws Exception {
+        return ResponseEntity.ok(orderService.resumeHeldOrder(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> discardHeldOrder(@PathVariable Long id) throws Exception {
+        orderService.discardHeldOrder(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

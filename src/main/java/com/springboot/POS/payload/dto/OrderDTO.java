@@ -21,12 +21,14 @@ public class OrderDTO {
     private Double taxAmount;
     private Double discount;
     private String discountType;
+    private String note;
     private LocalDateTime createdAt;
     private Long branchId;
     private Long customerId;
     private BranchDTO branch;
     private UserDTO cashier;
     private Customer customer;
+    private Customer selectedCustomer;
     private PaymentType paymentType;
     private String paymentMethod;    // frontend sends paymentMethod as string
     private String paymentReference; // eSewa ref / Khalti token / card last-4

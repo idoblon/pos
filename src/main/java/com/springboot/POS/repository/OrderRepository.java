@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -17,6 +18,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByBranchIdAndCreatedAtBetween(Long branchId, LocalDateTime from, LocalDateTime to);
     List<Order> findByCashierAndCreatedAtBetween(User cashier, LocalDateTime from, LocalDateTime to);
     List<Order> findByBranchIdOrderByCreatedAtDesc(Long branchId);
+    List<Order> findByCashierIdAndBranchIdAndStatusOrderByCreatedAtDesc(Long cashierId, Long branchId, com.springboot.POS.domain.OrderStatus status);
+    Optional<Order> findByIdempotencyKey(String idempotencyKey);
 
     @Query("SELECT o FROM Order o WHERE o.branch.id = :branchId AND o.branch.store.id = :storeId")
     List<Order> findByBranchIdAndStoreId(@Param("branchId") Long branchId, @Param("storeId") Long storeId);

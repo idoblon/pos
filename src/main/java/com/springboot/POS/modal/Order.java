@@ -29,6 +29,12 @@ public class Order {
 
     private String discountType;
 
+    @Column(length = 1000)
+    private String note;
+
+    @Column(name = "idempotency_key", unique = true, length = 255)
+    private String idempotencyKey;
+
     @Column(name = "created_at")
     @org.hibernate.annotations.CreationTimestamp
     private LocalDateTime createdAt;

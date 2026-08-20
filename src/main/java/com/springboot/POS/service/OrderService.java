@@ -9,7 +9,11 @@ import java.util.List;
 
 public interface OrderService {
 
-    OrderDTO createOrder(OrderDTO orderDTO) throws Exception;
+    OrderDTO createOrder(OrderDTO orderDTO, String idempotencyKey) throws Exception;
+    OrderDTO holdOrder(OrderDTO orderDTO) throws Exception;
+    List<OrderDTO> getHeldOrders() throws Exception;
+    OrderDTO resumeHeldOrder(Long id) throws Exception;
+    void discardHeldOrder(Long id) throws Exception;
     OrderDTO getOrderById(Long id) throws Exception;
     List<OrderDTO> getOrdersByBranch(Long branchId,
                                      Long customerId,
