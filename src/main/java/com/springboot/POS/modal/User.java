@@ -59,6 +59,12 @@ public class User {
     @Column(nullable = false)
     private String status = "active";
 
+    @Column(name = "password_reset_token_hash", length = 64)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_expires_at")
+    private LocalDateTime passwordResetExpiresAt;
+
     // Expose only IDs in JSON response
     public Long getStoreId() {
         return store != null ? store.getId() : null;

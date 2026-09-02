@@ -180,7 +180,7 @@ public class OrderServiceImpl implements OrderService {
         User cashier = userService.getCurrentUser();
         Branch branch = cashier.getBranch();
         if (branch == null) throw new Exception("Cashier's branch not found");
-        return orderRepository.findByCashierIdAndBranchIdAndStatusOrderByCreatedAtDesc(
+        return orderRepository.findByCashierIdAndBranchIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
                         cashier.getId(), branch.getId(), OrderStatus.HELD)
                 .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
     }
@@ -196,8 +196,17 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void discardHeldOrder(Long id) throws Exception {
+        // DELETE is intentionally idempotent: a double click or a delayed retry
+        // must not turn a successfully removed held order into a server error.
+        Order existingOrder = orderRepository.findById(id).orElse(null);
+        if (existingOrder == null || Boolean.TRUE.equals(existingOrder.getDeleted())) {
+            return;
+        }
         Order order = findOwnedHeldOrder(id);
-        order.setStatus(OrderStatus.CANCELLED);
+        // Do not change the status or physically delete the order. Existing
+        // installations can have legacy enum constraints or foreign keys; the
+        // model's deleted flag provides a safe, reversible discard operation.
+        order.setDeleted(true);
         orderRepository.save(order);
     }
 

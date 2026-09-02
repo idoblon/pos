@@ -44,9 +44,15 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
     @Value("${app.stripe.secret-key:}")
     private String stripeSecretKey;
 
+    @Value("${app.payment.demo-mode:false}")
+    private boolean demoMode;
+
     @Override
     public void verify(PaymentType type, String reference, Double amountReceived,
                        double total, Long storeId) throws Exception {
+        if (demoMode && type != PaymentType.CASH && reference != null && reference.startsWith("demo-")) {
+            return;
+        }
         switch (type) {
             case CASH   -> verifyCash(amountReceived, total);
             case ESEWA  -> verifyEsewa(reference, total, storeId);
@@ -192,6 +198,9 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
     @Override
     public boolean isPaymentMethodEnabled(Long storeId, PaymentType type) {
         if (type == PaymentType.CASH) {
+            return true;
+        }
+        if (demoMode) {
             return true;
         }
         // Check store-level config first

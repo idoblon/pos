@@ -61,6 +61,7 @@ public class Order {
     private Double amountReceived;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
     private Boolean deleted = false;

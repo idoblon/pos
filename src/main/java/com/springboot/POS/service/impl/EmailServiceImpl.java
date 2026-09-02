@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -67,6 +68,24 @@ public class EmailServiceImpl implements EmailService {
             "Best regards,\nPOS System",
             request.getUserName(), request.getPassword()
         ));
+        mailSender.send(message);
+    }
+
+    @Async
+    @Override
+    public void sendPasswordResetLink(String toEmail, String userName, String resetUrl) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Reset your POS System password");
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "We received a request to reset your POS System password.\n\n" +
+            "Use this link to choose a new password (it expires in 30 minutes):\n%s\n\n" +
+            "If you did not request this, you can safely ignore this email.\n\n" +
+            "Best regards,\nPOS System",
+            userName, resetUrl
+        ));
+        message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);
     }
 

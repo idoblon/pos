@@ -18,7 +18,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByBranchIdAndCreatedAtBetween(Long branchId, LocalDateTime from, LocalDateTime to);
     List<Order> findByCashierAndCreatedAtBetween(User cashier, LocalDateTime from, LocalDateTime to);
     List<Order> findByBranchIdOrderByCreatedAtDesc(Long branchId);
-    List<Order> findByCashierIdAndBranchIdAndStatusOrderByCreatedAtDesc(Long cashierId, Long branchId, com.springboot.POS.domain.OrderStatus status);
+    List<Order> findByCashierIdAndBranchIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(Long cashierId, Long branchId, com.springboot.POS.domain.OrderStatus status);
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
 
     @Query("SELECT o FROM Order o WHERE o.branch.id = :branchId AND o.branch.store.id = :storeId")
