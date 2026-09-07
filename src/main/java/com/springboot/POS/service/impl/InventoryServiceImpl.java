@@ -65,9 +65,18 @@ public class InventoryServiceImpl implements InventoryService {
             
             inventoryRepository.upsertBranchInventory(
                     branch.getId(), product.getId(), inventoryDTO.getQuantity(), inventoryDTO.getUnitPrice());
-            Inventory savedInventory = inventoryRepository
-                    .findByProductIdAndBranchIdWithLock(product.getId(), branch.getId())
-                    .orElseThrow(() -> new IllegalStateException("Unable to create branch inventory"));
+            List<Inventory> rows = inventoryRepository
+                    .findAllByProductIdAndBranchIdWithLock(product.getId(), branch.getId());
+            if (rows.isEmpty()) throw new IllegalStateException("Unable to create branch inventory");
+            // Merge any duplicates that may exist
+            Inventory savedInventory = rows.get(0);
+            if (rows.size() > 1) {
+                int total = rows.stream().mapToInt(Inventory::getQuantity).sum();
+                savedInventory.setQuantity(total);
+                inventoryRepository.save(savedInventory);
+                inventoryRepository.deleteAll(rows.subList(1, rows.size()));
+                inventoryRepository.flush();
+            }
             return InventoryMapper.toDTO(savedInventory);
         }
         

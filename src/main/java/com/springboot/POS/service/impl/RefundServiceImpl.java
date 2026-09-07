@@ -127,6 +127,11 @@ public class RefundServiceImpl implements RefundService {
     public void deleteRefund(Long refundId) throws Exception {
         this.getRefundById(refundId);
         refundRepository.deleteById(refundId);
+    }
 
+    @Override
+    public List<RefundDTO> getRefundsByStore(Long storeId) throws Exception {
+        return refundRepository.findByStoreId(storeId).stream()
+                .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
 }

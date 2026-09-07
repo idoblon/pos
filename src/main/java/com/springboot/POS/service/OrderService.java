@@ -25,4 +25,5 @@ public interface OrderService {
     List<OrderDTO> getOrdersByCustomerId(Long customerId) throws Exception;
     List<OrderDTO> getTodayOrdersByBranch(Long branchId) throws Exception;
     List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId) throws Exception;
+    List<OrderDTO> getOrdersByStore(Long storeId) throws Exception;
 }

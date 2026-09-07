@@ -13,6 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByPasswordResetTokenHash(String passwordResetTokenHash);
 
+    List<User> findByStore(Store store);
     List<User> findByStoreAndDeletedFalse(Store store);
     List<User> findByStore_IdAndDeletedFalse(Long storeId);
     List<User> findByBranch_IdAndDeletedFalse(Long branchId);

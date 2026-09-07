@@ -97,11 +97,11 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         store.setBrand(request.getStoreName());
         store.setDescription(request.getStoreDescription());
         store.setStoreType(request.getStoreType() != null ? request.getStoreType() : "RETAIL");
-        store.setStatus(StoreStatus.ACTIVE);
+        store.setStatus(StoreStatus.PENDING);
         store.setSubscriptionPlan(request.getSubscriptionPlan());
-        store.setSubscriptionStatus("ACTIVE");
-        store.setSubscriptionPurchaseDate(LocalDateTime.now());
-        store.setSubscriptionExpiry(LocalDateTime.now().plusYears(1));
+        store.setSubscriptionStatus("PENDING_PAYMENT");
+        store.setSubscriptionPurchaseDate(null);
+        store.setSubscriptionExpiry(null);
         store.setFullName(request.getOwnerName());
         store.setStoreAddress(request.getStoreAddress());
         store.setRegistrationRequestId(requestId);
@@ -115,7 +115,7 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
 
         Store savedStore = storeRepository.save(store);
 
-        // 2. Create User (ROLE_STORE_ADMIN)
+        // 2. Create User (ROLE_STORE_ADMIN) — inactive until payment confirmed
         User user = new User();
         user.setFullName(request.getOwnerName());
         user.setEmail(request.getEmail());
@@ -123,7 +123,7 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         user.setPassword(request.getPassword()); // Already encoded
         user.setRole(UserRole.ROLE_STORE_ADMIN);
         user.setStore(savedStore);
-        user.setStatus("active");
+        user.setStatus("pending_payment");
 
         User savedUser = userRepository.save(user);
 
@@ -139,13 +139,13 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         request.setCreatedUserId(savedUser.getId());
         requestRepository.save(request);
 
-        // 5. Send approval email with login credentials
+        // 5. Send approval email asking them to complete payment
         try {
-            emailService.sendStoreRegistrationApproved(
+            emailService.sendStoreRegistrationApprovalNotification(
                 request.getEmail(),
                 request.getOwnerName(),
                 request.getStoreName(),
-                request.getEmail()
+                request.getSubscriptionPlan()
             );
         } catch (Exception e) {
             // Don't fail if email fails

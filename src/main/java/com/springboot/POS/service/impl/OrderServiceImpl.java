@@ -268,6 +268,13 @@ public class OrderServiceImpl implements OrderService {
                 .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
+    @Override
+    public List<OrderDTO> getOrdersByStore(Long storeId) throws Exception {
+        return orderRepository.findByStoreId(storeId).stream()
+                .filter(order -> order.getStatus() == OrderStatus.COMPLETED)
+                .map(OrderMapper::toDTO).collect(Collectors.toList());
+    }
+
     private List<OrderItem> buildOrderItems(OrderDTO orderDTO) {
         Map<Long, Integer> quantitiesByProduct = new TreeMap<>();
         if (orderDTO.getItems() == null || orderDTO.getItems().isEmpty()) {

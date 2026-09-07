@@ -18,5 +18,8 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
     List<Refund> findByShiftReportId(Long id);
     List<Refund> findByBranchId(Long id);
     List<Refund> findByOrderId(Long orderId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT r FROM Refund r WHERE r.branch.store.id = :storeId")
+    List<Refund> findByStoreId(@org.springframework.data.repository.query.Param("storeId") Long storeId);
 }
 

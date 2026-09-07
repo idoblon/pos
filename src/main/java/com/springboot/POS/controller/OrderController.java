@@ -74,6 +74,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderByCashier(id));
     }
 
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<List<OrderDTO>> getOrdersByStore(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        return ResponseEntity.ok(orderService.getOrdersByStore(storeId));
+    }
+
     @GetMapping("/today/branch/{id}")
     public ResponseEntity<List<OrderDTO>> getTodayOrder(
             @PathVariable Long id,

@@ -83,11 +83,17 @@ public class Store {
 
     private StoreStatus status;
 
+    @Column(nullable = false)
+    private Boolean deleted = false;
+
     @Embedded
     private StoreContact contact = new StoreContact();
 
     @PrePersist
     protected void onCreate(){
+        if (deleted == null) {
+            deleted = false;
+        }
         if (status == null) {
             status = StoreStatus.PENDING;
         }

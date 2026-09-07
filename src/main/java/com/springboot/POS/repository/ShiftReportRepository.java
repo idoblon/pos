@@ -14,6 +14,9 @@ public interface ShiftReportRepository extends JpaRepository<ShiftReport, Long> 
 
     List<ShiftReport> findByCashierId(Long id);
 
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM ShiftReport s WHERE s.cashier.store.id = :storeId")
+    List<ShiftReport> findByStoreId(@org.springframework.data.repository.query.Param("storeId") Long storeId);
+
     @Query("""
             SELECT DISTINCT sr FROM ShiftReport sr
             LEFT JOIN sr.branch shiftBranch

@@ -1,12 +1,16 @@
 package com.springboot.POS.controller;
 
+import com.springboot.POS.modal.StoreRegistrationRequest;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.PaymentStatusDTO;
+import com.springboot.POS.repository.StoreRegistrationRequestRepository;
+import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.PaymentService;
 import com.springboot.POS.service.StoreRegistrationService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +25,51 @@ import jakarta.validation.constraints.NotNull;
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class AdminPaymentController {
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     private final StoreRegistrationService registrationService;
     private final PaymentService paymentService;
     private final UserService userService;
+    private final StoreRegistrationRequestRepository storeRegistrationRequestRepository;
+    private final UserRepository userRepository;
+
+    /**
+     * Check store payment status by storeId or email — used by PaymentRequired page
+     */
+    @GetMapping("/store-payment/status")
+    public ResponseEntity<?> getStorePaymentStatus(
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) String email) {
+        try {
+            StoreRegistrationRequest reg = null;
+            if (email != null && !email.isBlank()) {
+                reg = storeRegistrationRequestRepository.findByEmail(email).orElse(null);
+            }
+            if (reg == null) {
+                return ResponseEntity.ok(java.util.Map.of(
+                    "status", "NOT_FOUND",
+                    "message", "No registration found."
+                ));
+            }
+            // Check if user is already active
+            boolean paid = userRepository.findByEmail(reg.getEmail())
+                    .map(u -> "active".equalsIgnoreCase(u.getStatus())).orElse(false);
+            if (paid) {
+                return ResponseEntity.ok(java.util.Map.of("status", "PAID", "message", "Payment completed."));
+            }
+            String paymentLink = frontendUrl + "/payment-required?email=" + reg.getEmail();
+            return ResponseEntity.ok(java.util.Map.of(
+                "status", "PENDING",
+                "message", "Payment pending.",
+                "plan", reg.getSubscriptionPlan() != null ? reg.getSubscriptionPlan() : "BASIC",
+                "storeName", reg.getStoreName() != null ? reg.getStoreName() : "",
+                "paymentLink", paymentLink
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.ok(java.util.Map.of("status", "FAILED", "message", e.getMessage()));
+        }
+    }
 
     /**
      * Approve store registration with optional payment override

@@ -15,6 +15,9 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Async
     @Override
     public void sendAccountCreatedEmail(EmailRequest request) {
@@ -252,21 +255,19 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendStoreRegistrationApprovalNotification(String applicantEmail, String ownerName, String storeName, String subscriptionPlan) {
+        String paymentLink = frontendUrl + "/payment-required?email=" + applicantEmail;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(applicantEmail);
-        message.setSubject("Store Registration Approved - Payment Required");
+        message.setSubject("Store Registration Approved - Complete Payment to Activate");
         message.setText(String.format(
             "Hello %s,\n\n" +
-            "Congratulations! Your store registration request has been APPROVED.\n\n" +
-            "Store Details:\n" +
-            "Store Name: %s\n" +
-            "Status: APPROVED\n" +
+            "Congratulations! Your store registration for '%s' has been APPROVED.\n\n" +
             "Subscription Plan: %s\n\n" +
-            "Next Step: Please complete your subscription payment to receive your login credentials.\n" +
-            "Payment Link: http://localhost:5173/pay\n\n" +
-            "Once payment is completed, you will receive your login credentials via email.\n\n" +
+            "To activate your store and receive your login credentials, please complete the subscription payment using the link below:\n\n" +
+            "%s\n\n" +
+            "Once payment is confirmed, you will receive a separate email with your login credentials.\n\n" +
             "Best regards,\nPOS System Team",
-            ownerName, storeName, subscriptionPlan
+            ownerName, storeName, subscriptionPlan, paymentLink
         ));
         message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);
@@ -275,18 +276,19 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail) {
+        String loginLink = frontendUrl + "/login";
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(applicantEmail);
-        message.setSubject("Your POS Store is Ready - Login Now!");
+        message.setSubject("Payment Confirmed - Your Store is Now Active!");
         message.setText(String.format(
             "Hello %s,\n\n" +
             "Your payment has been received and your store '%s' is now ACTIVE!\n\n" +
             "Login Credentials:\n" +
             "Email: %s\n" +
             "Password: (the password you set during registration)\n\n" +
-            "Login here: http://localhost:5173/login\n\n" +
+            "Login here: %s\n\n" +
             "Best regards,\nPOS System Team",
-            ownerName, storeName, loginEmail
+            ownerName, storeName, loginEmail, loginLink
         ));
         message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);

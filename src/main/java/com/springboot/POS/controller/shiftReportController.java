@@ -1,6 +1,7 @@
 package com.springboot.POS.controller;
 
 import com.springboot.POS.payload.dto.ShiftReportDTO;
+import com.springboot.POS.repository.ShiftReportRepository;
 import com.springboot.POS.service.ShiftReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -16,6 +17,7 @@ import java.util.List;
 public class shiftReportController {
 
     private final ShiftReportService shiftReportService;
+    private final ShiftReportRepository shiftReportRepository;
 
     @PostMapping("/start")
     public ResponseEntity<ShiftReportDTO> startShift(
@@ -60,6 +62,18 @@ public class shiftReportController {
     ) throws Exception {
         return ResponseEntity.ok(
                 shiftReportService.getShiftReportByBranchId(branchId)
+        );
+    }
+
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<List<ShiftReportDTO>> getShiftReportByStore(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt
+    ) throws Exception {
+        return ResponseEntity.ok(
+                shiftReportRepository.findByStoreId(storeId).stream()
+                        .map(com.springboot.POS.mapper.ShiftReportMapper::toDTO)
+                        .collect(java.util.stream.Collectors.toList())
         );
     }
 

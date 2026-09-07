@@ -11,10 +11,12 @@ import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StoreDTO;
 import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.repository.StoreRepository;
+import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
     private final StoreRegistrationRequestRepository registrationRepository;
+    private final UserRepository userRepository;
     private final UserService userService;
 
     @Override
@@ -45,13 +48,16 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public List<Store> getAllStores() {
         // This returns entities as per interface
-        return storeRepository.findAll();
+        return storeRepository.findAll().stream()
+                .filter(store -> !Boolean.TRUE.equals(store.getDeleted()))
+                .collect(Collectors.toList());
     }
 
     // Optional: Add a method to get DTOs if needed
     @Override
     public List<StoreDTO> getAllStoreDTOs() {
         return storeRepository.findAll().stream()
+                .filter(store -> !Boolean.TRUE.equals(store.getDeleted()))
                 .map(store -> {
                     StoreDTO dto = StoreMapper.toDTO(store);
                     enrichFromRegistration(store, dto);
@@ -62,34 +68,37 @@ public class StoreServiceImpl implements StoreService {
 
     private void enrichFromRegistration(Store store, StoreDTO dto) {
         StoreRegistrationRequest registration = resolveRegistrationRequest(store);
-        if (registration == null) {
-            return;
-        }
+        if (registration == null) return;
 
-        if (isBlank(dto.getSubscriptionPlan())) {
-            dto.setSubscriptionPlan(registration.getSubscriptionPlan());
-        }
-        if (dto.getEstimatedBranches() == null) {
-            dto.setEstimatedBranches(registration.getEstimatedBranches());
-        }
-        if (dto.getEstimatedUsers() == null) {
-            dto.setEstimatedUsers(registration.getEstimatedUsers());
-        }
-        if (isBlank(dto.getFullName())) {
-            dto.setFullName(registration.getOwnerName());
-        }
-        if (isBlank(dto.getStoreAddress())) {
-            dto.setStoreAddress(registration.getStoreAddress());
-        }
-        if (isBlank(dto.getEmail())) {
-            dto.setEmail(registration.getEmail());
-        }
-        if (isBlank(dto.getPhone())) {
-            dto.setPhone(registration.getPhone());
-        }
-        if (dto.getRegistrationRequestId() == null) {
-            dto.setRegistrationRequestId(registration.getId());
-        }
+        if (isBlank(dto.getSubscriptionPlan()))    dto.setSubscriptionPlan(registration.getSubscriptionPlan());
+        if (dto.getEstimatedBranches() == null)    dto.setEstimatedBranches(registration.getEstimatedBranches());
+        if (dto.getEstimatedUsers() == null)       dto.setEstimatedUsers(registration.getEstimatedUsers());
+        if (dto.getRegistrationRequestId() == null) dto.setRegistrationRequestId(registration.getId());
+
+        // Resolve address/email/phone from registration only when contact is blank
+        String address = dto.getStoreAddress();
+        String email   = dto.getEmail();
+        String phone   = dto.getPhone();
+        if (isBlank(address)) address = registration.getStoreAddress();
+        if (isBlank(email))   email   = registration.getEmail();
+        if (isBlank(phone))   phone   = registration.getPhone();
+
+        // Owner name: prefer store.fullName, fall back to storeAdmin, then registration
+        String fullName = dto.getFullName();
+        if (isBlank(fullName) && dto.getStoreAdmin() != null) fullName = dto.getStoreAdmin().getFullName();
+        if (isBlank(fullName)) fullName = registration.getOwnerName();
+
+        dto.setFullName(fullName);
+        dto.setStoreAddress(address);
+        dto.setEmail(email);
+        dto.setPhone(phone);
+
+        // Keep contact object in sync
+        com.springboot.POS.modal.StoreContact c = new com.springboot.POS.modal.StoreContact();
+        c.setAddress(address != null ? address : "");
+        c.setEmail(email     != null ? email   : "");
+        c.setPhone(phone     != null ? phone   : "");
+        dto.setContact(c);
     }
 
     private StoreRegistrationRequest resolveRegistrationRequest(Store store) {
@@ -168,11 +177,24 @@ public class StoreServiceImpl implements StoreService {
             existing.setStoreType(storeDTO.getStoreType());
         }
 
-        if (storeDTO.getContact() != null) {
+        if (storeDTO.getContact() != null
+                || storeDTO.getStoreAddress() != null
+                || storeDTO.getEmail() != null
+                || storeDTO.getPhone() != null) {
+            // Resolve from flat fields first, fall back to contact object
+            String address = storeDTO.getStoreAddress();
+            String email   = storeDTO.getEmail();
+            String phone   = storeDTO.getPhone();
+            if (address == null && storeDTO.getContact() != null) address = storeDTO.getContact().getAddress();
+            if (email   == null && storeDTO.getContact() != null) email   = storeDTO.getContact().getEmail();
+            if (phone   == null && storeDTO.getContact() != null) phone   = storeDTO.getContact().getPhone();
+            // Keep both columns in sync
+            existing.setStoreAddress(address);
+            if (storeDTO.getFullName() != null) existing.setFullName(storeDTO.getFullName());
             StoreContact contact = StoreContact.builder()
-                    .address(storeDTO.getContact().getAddress())
-                    .phone(storeDTO.getContact().getPhone())
-                    .email(storeDTO.getContact().getEmail())
+                    .address(address != null ? address : "")
+                    .email(email     != null ? email   : "")
+                    .phone(phone     != null ? phone   : "")
                     .build();
             existing.setContact(contact);
         }
@@ -193,6 +215,7 @@ public class StoreServiceImpl implements StoreService {
     }
 
     @Override
+    @Transactional
     public void deleteStore(Long id) throws UserException {
         try {
             User currentUser = userService.getCurrentUser();
@@ -204,13 +227,44 @@ public class StoreServiceImpl implements StoreService {
             // Find store by ID instead of using getStoreByAdmin()
             Store store = storeRepository.findById(id)
                     .orElseThrow(() -> new UserException("Store not found with id: " + id));
-
-            // Verify that the current user is the admin of this store
-            if (!store.getStoreAdmin().getId().equals(currentUser.getId())) {
+            // Platform administrators can manage every registered store. Store
+            // administrators remain restricted to deleting only their own store.
+            boolean isPlatformAdmin = currentUser.getRole() == UserRole.ROLE_ADMIN;
+            boolean isStoreAdmin = store.getStoreAdmin() != null
+                    && store.getStoreAdmin().getId().equals(currentUser.getId());
+            if (!isPlatformAdmin && !isStoreAdmin) {
                 throw new UserException("You can only delete your own store");
             }
 
-            storeRepository.delete(store);
+            // Detach and deactivate every user that refers to this store before
+            // removing it. This prevents a dangling user.store_id foreign key and
+            // ensures former staff cannot keep using a deleted store.
+            List<User> storeUsers = userRepository.findByStore(store);
+            for (User storeUser : storeUsers) {
+                storeUser.setStore(null);
+                storeUser.setBranch(null);
+                storeUser.setDeleted(true);
+                storeUser.setStatus("inactive");
+            }
+            userRepository.saveAll(storeUsers);
+
+            // Preserve orders, payments, products, branches, and configuration for
+            // audit purposes. A physical delete would violate one of those foreign
+            // keys; a deleted store is hidden from normal store listings instead.
+            store.setStoreAdmin(null);
+            // Do not change status here: existing databases can carry a legacy
+            // status check constraint. The deleted flag is the deletion state.
+            store.setDeleted(true);
+            storeRepository.save(store);
+
+            // The admin UI also merges registration records into its store list.
+            // Mark the originating request as rejected so this deleted store is
+            // not reintroduced there, while preserving the record for audit.
+            registrationRepository.findByCreatedStoreId(id).ifPresent(request -> {
+                request.setStatus("REJECTED");
+                request.setRejectionReason("Store deleted by an administrator.");
+                registrationRepository.save(request);
+            });
 
         } catch (UserException e) {
             throw e;

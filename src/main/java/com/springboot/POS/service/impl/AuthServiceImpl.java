@@ -178,6 +178,11 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
 
+        // Block login if store payment has not been completed
+        if ("pending_payment".equalsIgnoreCase(user.getStatus())) {
+            throw new UserException("Your store registration has been approved. Please complete the subscription payment before logging in.");
+        }
+
         //  BUILD RESPONSE WITH STORE INFO
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);

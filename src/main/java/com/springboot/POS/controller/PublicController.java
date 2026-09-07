@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.springboot.POS.repository.StoreRepository;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/public")
@@ -24,6 +26,7 @@ public class PublicController {
 
     private final StoreRegistrationRequestRepository storeRegistrationRequestRepository;
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
     private final EmailService emailService;
     private final PaymentService paymentService;
     private final StoreRegistrationService registrationService;
@@ -117,9 +120,11 @@ public class PublicController {
                 r.setMessage("No registration found for this email.");
                 return ResponseEntity.badRequest().body(r);
             }
-            if ("APPROVED".equals(registration.getStatus())) {
+            if ("APPROVED".equals(registration.getStatus()) &&
+                    userRepository.findByEmail(req.getEmail())
+                            .map(u -> "active".equalsIgnoreCase(u.getStatus())).orElse(false)) {
                 ApiResponse r = new ApiResponse();
-                r.setMessage("Store already approved.");
+                r.setMessage("Store already activated.");
                 return ResponseEntity.badRequest().body(r);
             }
 
@@ -127,14 +132,38 @@ public class PublicController {
             registration.setPaymentStatus("COMPLETED");
             registration.setPaymentMethod(req.getPaymentMethod());
             registration.setTransactionId(req.getTransactionId());
-            registration.setStatus("PAYMENT_PENDING");
             storeRegistrationRequestRepository.save(registration);
 
-            // Fully approve: create store + user + send credentials email
-            registrationService.approveRequestWithOverride(registration.getId(), null, true);
+            // Activate user and store
+            userRepository.findByEmail(req.getEmail()).ifPresent(user -> {
+                user.setStatus("active");
+                userRepository.save(user);
+                if (user.getStore() != null) {
+                    user.getStore().setStatus(com.springboot.POS.domain.StoreStatus.ACTIVE);
+                    user.getStore().setSubscriptionStatus("ACTIVE");
+                    user.getStore().setSubscriptionPurchaseDate(java.time.LocalDateTime.now());
+                    user.getStore().setSubscriptionExpiry(java.time.LocalDateTime.now().plusYears(1));
+                    storeRepository.save(user.getStore());
+                }
+            });
+
+            // If user didn't exist yet (payment before admin approval path), fully approve
+            if (userRepository.findByEmail(req.getEmail()).isEmpty()) {
+                registration.setStatus("PAYMENT_PENDING");
+                storeRegistrationRequestRepository.save(registration);
+                registrationService.approveRequestWithOverride(registration.getId(), null, true);
+            }
+
+            // Send login credentials email
+            try {
+                emailService.sendStoreRegistrationApproved(
+                    req.getEmail(), registration.getOwnerName(),
+                    registration.getStoreName(), req.getEmail()
+                );
+            } catch (Exception ignored) {}
 
             ApiResponse response = new ApiResponse();
-            response.setMessage("Payment received. Login credentials sent to " + req.getEmail());
+            response.setMessage("Payment received. You can now log in with your registered email and password.");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             ApiResponse response = new ApiResponse();

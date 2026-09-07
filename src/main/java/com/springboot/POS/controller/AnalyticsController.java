@@ -3,8 +3,13 @@ package com.springboot.POS.controller;
 import com.springboot.POS.domain.PaymentType;
 import com.springboot.POS.modal.Order;
 import com.springboot.POS.modal.OrderItem;
+import com.springboot.POS.modal.Refund;
+import com.springboot.POS.modal.ShiftReport;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.repository.OrderRepository;
+import com.springboot.POS.repository.RefundRepository;
+import com.springboot.POS.repository.ShiftReportRepository;
+import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +29,9 @@ public class AnalyticsController {
 
     private final UserService userService;
     private final OrderRepository orderRepository;
+    private final RefundRepository refundRepository;
+    private final ShiftReportRepository shiftReportRepository;
+    private final UserRepository userRepository;
     private final OwnershipGuard ownershipGuard;
 
     @GetMapping("/store/{storeId}")
@@ -201,6 +209,75 @@ public class AnalyticsController {
             point.put("orders", hourCounts.getOrDefault(h, 0L));
             result.add(point);
         }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/store/{storeId}/employees")
+    public ResponseEntity<List<Map<String, Object>>> getEmployeeAnalytics(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+
+        List<User> employees = userRepository.findByStore_IdAndDeletedFalse(storeId);
+        List<Order> allOrders = orderRepository.findByStoreId(storeId);
+        List<Refund> allRefunds = refundRepository.findByStoreId(storeId);
+        List<ShiftReport> allShifts = shiftReportRepository.findAll().stream()
+                .filter(s -> s.getCashier() != null &&
+                        s.getCashier().getStore() != null &&
+                        storeId.equals(s.getCashier().getStore().getId()))
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (User emp : employees) {
+            Long empId = emp.getId();
+
+            List<Order> empOrders = allOrders.stream()
+                    .filter(o -> o.getCashier() != null && empId.equals(o.getCashier().getId()))
+                    .collect(Collectors.toList());
+
+            List<Refund> empRefunds = allRefunds.stream()
+                    .filter(r -> r.getCashier() != null && empId.equals(r.getCashier().getId()))
+                    .collect(Collectors.toList());
+
+            List<ShiftReport> empShifts = allShifts.stream()
+                    .filter(s -> empId.equals(s.getCashier().getId()))
+                    .collect(Collectors.toList());
+
+            double totalSales = empOrders.stream().mapToDouble(Order::getTotalAmount).sum();
+            double totalRefunds = empRefunds.stream().mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+            long totalShifts = empShifts.size();
+            long activeShifts = empShifts.stream().filter(s -> s.getShiftEnd() == null).count();
+
+            // Average shift duration in hours
+            double avgShiftHours = empShifts.stream()
+                    .filter(s -> s.getShiftStart() != null && s.getShiftEnd() != null)
+                    .mapToDouble(s -> java.time.Duration.between(s.getShiftStart(), s.getShiftEnd()).toMinutes() / 60.0)
+                    .average().orElse(0.0);
+
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("employeeId", empId);
+            m.put("fullName", emp.getFullName());
+            m.put("email", emp.getEmail());
+            m.put("role", emp.getRole());
+            m.put("status", emp.getStatus());
+            m.put("lastLogin", emp.getLastLogin());
+            m.put("createdAt", emp.getCreatedAt());
+            m.put("totalOrders", empOrders.size());
+            m.put("totalSales", Math.round(totalSales * 100.0) / 100.0);
+            m.put("totalRefunds", Math.round(totalRefunds * 100.0) / 100.0);
+            m.put("netSales", Math.round((totalSales - totalRefunds) * 100.0) / 100.0);
+            m.put("refundCount", empRefunds.size());
+            m.put("totalShifts", totalShifts);
+            m.put("activeShifts", activeShifts);
+            m.put("avgShiftHours", Math.round(avgShiftHours * 10.0) / 10.0);
+            result.add(m);
+        }
+
+        result.sort((a, b) -> Double.compare(
+                ((Number) b.get("totalSales")).doubleValue(),
+                ((Number) a.get("totalSales")).doubleValue()));
+
         return ResponseEntity.ok(result);
     }
 
