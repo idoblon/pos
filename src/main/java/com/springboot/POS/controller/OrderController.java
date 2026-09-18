@@ -81,6 +81,22 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByStore(storeId));
     }
 
+    @GetMapping("/monthly/branch/{branchId}")
+    public ResponseEntity<List<OrderDTO>> getMonthlyOrdersByBranch(
+            @PathVariable Long branchId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireBranchAccess(user, branchId);
+        return ResponseEntity.ok(orderService.getMonthlyOrdersByBranch(branchId));
+    }
+
+    @GetMapping("/monthly/store/{storeId}")
+    public ResponseEntity<List<OrderDTO>> getMonthlyOrdersByStore(
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        return ResponseEntity.ok(orderService.getMonthlyOrdersByStore(storeId));
+    }
+
     @GetMapping("/today/branch/{id}")
     public ResponseEntity<List<OrderDTO>> getTodayOrder(
             @PathVariable Long id,

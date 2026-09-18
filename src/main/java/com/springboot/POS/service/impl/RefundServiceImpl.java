@@ -134,4 +134,12 @@ public class RefundServiceImpl implements RefundService {
         return refundRepository.findByStoreId(storeId).stream()
                 .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
+
+    @Override
+    public List<RefundDTO> getMonthlyRefundsByBranch(Long branchId) throws Exception {
+        LocalDateTime from = java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = LocalDateTime.now();
+        return refundRepository.findByBranchIdAndCreatedAtBetween(branchId, from, to)
+                .stream().map(RefundMapper::toDTO).collect(Collectors.toList());
+    }
 }

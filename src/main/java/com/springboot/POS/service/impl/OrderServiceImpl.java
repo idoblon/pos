@@ -8,6 +8,8 @@ import com.springboot.POS.payload.dto.OrderDTO;
 import com.springboot.POS.repository.CustomerRepository;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.ProductRepository;
+import com.springboot.POS.domain.UserRole;
+import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.OrderPaymentService;
 import com.springboot.POS.service.OrderService;
@@ -37,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryService inventoryService;
     private final CustomerRepository customerRepository;
     private final OrderPaymentService orderPaymentService;
+    private final BranchRepository branchRepository;
 
     @Override
     @Transactional
@@ -52,6 +55,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Branch branch = cashier.getBranch();
+        if (branch == null && cashier.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(cashier.getId()).orElse(null);
+        }
         if (branch == null) {
             throw new Exception("Cashier's branch not found");
         }
@@ -150,6 +156,9 @@ public class OrderServiceImpl implements OrderService {
     public OrderDTO holdOrder(OrderDTO orderDTO) throws Exception {
         User cashier = userService.getCurrentUser();
         Branch branch = cashier.getBranch();
+        if (branch == null && cashier.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(cashier.getId()).orElse(null);
+        }
         if (branch == null) throw new Exception("Cashier's branch not found");
 
         List<OrderItem> orderItems = buildOrderItems(orderDTO);
@@ -179,6 +188,9 @@ public class OrderServiceImpl implements OrderService {
     public List<OrderDTO> getHeldOrders() throws Exception {
         User cashier = userService.getCurrentUser();
         Branch branch = cashier.getBranch();
+        if (branch == null && cashier.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(cashier.getId()).orElse(null);
+        }
         if (branch == null) throw new Exception("Cashier's branch not found");
         return orderRepository.findByCashierIdAndBranchIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
                         cashier.getId(), branch.getId(), OrderStatus.HELD)
@@ -275,6 +287,22 @@ public class OrderServiceImpl implements OrderService {
                 .map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
+    @Override
+    public List<OrderDTO> getMonthlyOrdersByBranch(Long branchId) throws Exception {
+        LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = LocalDateTime.now();
+        return orderRepository.findCompletedByBranchIdAndDateRange(branchId, from, to)
+                .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrderDTO> getMonthlyOrdersByStore(Long storeId) throws Exception {
+        LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime to = LocalDateTime.now();
+        return orderRepository.findCompletedByStoreIdAndDateRange(storeId, from, to)
+                .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
+    }
+
     private List<OrderItem> buildOrderItems(OrderDTO orderDTO) {
         Map<Long, Integer> quantitiesByProduct = new TreeMap<>();
         if (orderDTO.getItems() == null || orderDTO.getItems().isEmpty()) {
@@ -312,11 +340,15 @@ public class OrderServiceImpl implements OrderService {
 
     private Order findOwnedHeldOrder(Long id) throws Exception {
         User cashier = userService.getCurrentUser();
+        Branch branch = cashier.getBranch();
+        if (branch == null && cashier.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(cashier.getId()).orElse(null);
+        }
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Held order not found"));
         if (order.getStatus() != OrderStatus.HELD || order.getCashier() == null
-                || !order.getCashier().getId().equals(cashier.getId()) || cashier.getBranch() == null
-                || order.getBranch() == null || !order.getBranch().getId().equals(cashier.getBranch().getId())) {
+                || !order.getCashier().getId().equals(cashier.getId()) || branch == null
+                || order.getBranch() == null || !order.getBranch().getId().equals(branch.getId())) {
             throw new IllegalAccessException("You can only manage your own held orders");
         }
         return order;

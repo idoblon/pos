@@ -39,4 +39,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByBranchIdAndDateRange(@Param("branchId") Long branchId,
                                            @Param("from") LocalDateTime from,
                                            @Param("to") LocalDateTime to);
+
+    @Query("SELECT o FROM Order o WHERE o.branch.id = :branchId AND o.status = 'COMPLETED' AND o.createdAt BETWEEN :from AND :to")
+    List<Order> findCompletedByBranchIdAndDateRange(@Param("branchId") Long branchId,
+                                                    @Param("from") LocalDateTime from,
+                                                    @Param("to") LocalDateTime to);
+
+    @Query("SELECT o FROM Order o WHERE o.branch.store.id = :storeId AND o.status = 'COMPLETED' AND o.createdAt BETWEEN :from AND :to")
+    List<Order> findCompletedByStoreIdAndDateRange(@Param("storeId") Long storeId,
+                                                   @Param("from") LocalDateTime from,
+                                                   @Param("to") LocalDateTime to);
 }

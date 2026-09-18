@@ -19,4 +19,5 @@ public interface RefundService {
     RefundDTO getRefundById(Long refundId) throws Exception;
     void deleteRefund(Long refundId) throws Exception;
     List<RefundDTO> getRefundsByStore(Long storeId) throws Exception;
+    List<RefundDTO> getMonthlyRefundsByBranch(Long branchId) throws Exception;
 }
