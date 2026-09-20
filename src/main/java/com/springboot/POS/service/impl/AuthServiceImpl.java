@@ -58,7 +58,6 @@ public class AuthServiceImpl implements AuthService {
             newUser.setRole(UserRole.ROLE_ADMIN);
             newUser.setFullName(userDto.getFullName());
             newUser.setPhone(userDto.getPhone());
-            newUser.setLastLogin(LocalDateTime.now());
             // Admin doesn't need a store
             newUser.setStore(null);
 
@@ -133,7 +132,6 @@ public class AuthServiceImpl implements AuthService {
         newUser.setRole(UserRole.ROLE_STORE_ADMIN);
         newUser.setFullName(userDto.getFullName());
         newUser.setPhone(userDto.getPhone());
-        newUser.setLastLogin(LocalDateTime.now());
         newUser.setStore(store);
 
         User savedUser = userRepository.save(newUser);

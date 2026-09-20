@@ -2,6 +2,8 @@ package com.springboot.POS.controller;
 
 import com.springboot.POS.payload.dto.RefundDTO;
 import com.springboot.POS.service.RefundService;
+import com.springboot.POS.service.UserService;
+import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,8 @@ import java.util.List;
 public class RefundController {
 
     private final RefundService refundService;
+    private final UserService userService;
+    private final OwnershipGuard ownershipGuard;
 
     @PostMapping
     public ResponseEntity<RefundDTO> createRefund(@RequestBody RefundDTO refundDTO) throws Exception {
@@ -59,8 +63,10 @@ public class RefundController {
 
     @GetMapping("/store/{storeId}")
     public ResponseEntity<List<RefundDTO>> getRefundsByStore(
-            @PathVariable Long storeId
+            @PathVariable Long storeId,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception {
+        ownershipGuard.requireStoreAccess(userService.getUserFromJwtToken(jwt), storeId);
         return ResponseEntity.ok(refundService.getRefundsByStore(storeId));
     }
 

@@ -25,7 +25,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(
             @RequestBody OrderDTO order,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) throws Exception {
+            @RequestHeader("Idempotency-Key") String idempotencyKey) throws Exception {
         return ResponseEntity.ok(orderService.createOrder(order, idempotencyKey));
     }
 
@@ -78,6 +78,7 @@ public class OrderController {
     public ResponseEntity<List<OrderDTO>> getOrdersByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {
+        ownershipGuard.requireStoreAccess(userService.getUserFromJwtToken(jwt), storeId);
         return ResponseEntity.ok(orderService.getOrdersByStore(storeId));
     }
 

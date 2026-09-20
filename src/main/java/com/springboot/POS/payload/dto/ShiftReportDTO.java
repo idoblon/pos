@@ -47,4 +47,9 @@ public class ShiftReportDTO {
     private Double cashDiscrepancy;
     private String reconciliationStatus;
 
+    private Double handoverCashCounted;
+    private String handoverNotes;
+    private String handoverNextTasks;
+    private LocalDateTime handoverSavedAt;
+
 }

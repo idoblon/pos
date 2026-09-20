@@ -17,5 +17,7 @@ public interface ShiftReportService {
     ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception;
     ShiftReportDTO getShiftByCashierAndDate(Long cashierId, LocalDateTime date) throws Exception;
     ShiftReportDTO getCurrentShiftReportProgress() throws Exception;
+    ShiftReportDTO saveHandover(Long shiftReportId, Double cashCounted, String notes, String nextTasks) throws Exception;
+    ShiftReportDTO getLatestHandoverForCurrentBranch() throws Exception;
 
 }

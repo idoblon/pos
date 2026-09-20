@@ -37,7 +37,9 @@ public class UserMapper {
         createdUser.setRole(userDTO.getRole());
         createdUser.setCreatedAt(userDTO.getCreatedAt());
         createdUser.setUpdatedAt(userDTO.getUpdatedAt());
-        createdUser.setLastLogin(userDTO.getLastLogin());
+        // Login history is server-owned and is updated only after successful
+        // authentication; never trust it from an employee-management request.
+        createdUser.setLastLogin(null);
         createdUser.setPhone(userDTO.getPhone());
         createdUser.setPassword(userDTO.getPassword());
         if (userDTO.getStatus() != null) {

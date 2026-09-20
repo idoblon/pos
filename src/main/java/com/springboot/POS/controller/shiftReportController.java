@@ -3,6 +3,8 @@ package com.springboot.POS.controller;
 import com.springboot.POS.payload.dto.ShiftReportDTO;
 import com.springboot.POS.repository.ShiftReportRepository;
 import com.springboot.POS.service.ShiftReportService;
+import com.springboot.POS.service.UserService;
+import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ public class shiftReportController {
 
     private final ShiftReportService shiftReportService;
     private final ShiftReportRepository shiftReportRepository;
+    private final UserService userService;
+    private final OwnershipGuard ownershipGuard;
 
     @PostMapping("/start")
     public ResponseEntity<ShiftReportDTO> startShift(
@@ -38,6 +42,23 @@ public class shiftReportController {
     public ResponseEntity<ShiftReportDTO> getCurrentShiftProgress() throws Exception {
         ShiftReportDTO dto = shiftReportService.getCurrentShiftReportProgress();
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/handover")
+    public ResponseEntity<ShiftReportDTO> saveHandover(
+            @PathVariable Long id,
+            @RequestBody ShiftHandoverRequest request
+    ) throws Exception {
+        return ResponseEntity.ok(shiftReportService.saveHandover(
+                id, request.cashCounted(), request.notes(), request.nextTasks()));
+    }
+
+    public record ShiftHandoverRequest(Double cashCounted, String notes, String nextTasks) {}
+
+    @GetMapping("/latest-handover")
+    public ResponseEntity<ShiftReportDTO> getLatestHandover() throws Exception {
+        ShiftReportDTO handover = shiftReportService.getLatestHandoverForCurrentBranch();
+        return handover == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(handover);
     }
     @GetMapping("/cashier/{cashierId}/by-date")
     public ResponseEntity<ShiftReportDTO> getShiftReportByDate(
@@ -70,6 +91,7 @@ public class shiftReportController {
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt
     ) throws Exception {
+        ownershipGuard.requireStoreAccess(userService.getUserFromJwtToken(jwt), storeId);
         return ResponseEntity.ok(
                 shiftReportRepository.findByStoreId(storeId).stream()
                         .map(com.springboot.POS.mapper.ShiftReportMapper::toDTO)

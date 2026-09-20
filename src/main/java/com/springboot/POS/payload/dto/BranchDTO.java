@@ -25,6 +25,7 @@ public class BranchDTO {
     private String address;
     private String phone;
     private String email;
+    private Double monthlySalesTarget;
 
     private List<String> workingDays;
     private LocalTime openTime;

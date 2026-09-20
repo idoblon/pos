@@ -39,6 +39,10 @@ public class ShiftReportMapper {
                 .expectedCash(entity.getExpectedCash())
                 .cashDiscrepancy(entity.getCashDiscrepancy())
                 .reconciliationStatus(entity.getReconciliationStatus())
+                .handoverCashCounted(entity.getHandoverCashCounted())
+                .handoverNotes(entity.getHandoverNotes())
+                .handoverNextTasks(entity.getHandoverNextTasks())
+                .handoverSavedAt(entity.getHandoverSavedAt())
                 .build();
     }
 

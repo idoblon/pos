@@ -32,6 +32,8 @@ public interface ShiftReportRepository extends JpaRepository<ShiftReport, Long> 
             User cashier
     );
 
+    Optional<ShiftReport> findTopByBranchIdAndHandoverSavedAtIsNotNullOrderByHandoverSavedAtDesc(Long branchId);
+
     Optional<ShiftReport> findByCashierAndShiftStartBetween(
             User cashier, LocalDateTime start, LocalDateTime end
     );

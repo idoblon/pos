@@ -58,4 +58,13 @@ public class ShiftReport {
     private Double cashDiscrepancy;   // declaredCash - expectedCash
     private String reconciliationStatus; // MATCHED, SURPLUS, SHORTAGE
 
+    // Handover details are persisted with the shift so the next cashier and
+    // managers can read the same record from any device.
+    private Double handoverCashCounted;
+    @Column(length = 2000)
+    private String handoverNotes;
+    @Column(length = 2000)
+    private String handoverNextTasks;
+    private LocalDateTime handoverSavedAt;
+
 }

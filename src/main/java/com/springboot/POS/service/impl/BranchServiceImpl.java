@@ -55,6 +55,10 @@ public class BranchServiceImpl implements BranchService {
         existing.setAddress(branchDTO.getAddress());
         existing.setOpenTime(branchDTO.getOpenTime());
         existing.setCloseTime(branchDTO.getCloseTime());
+        if (branchDTO.getMonthlySalesTarget() == null || !Double.isFinite(branchDTO.getMonthlySalesTarget()) || branchDTO.getMonthlySalesTarget() < 0) {
+            throw new IllegalArgumentException("Monthly sales target must be a non-negative number");
+        }
+        existing.setMonthlySalesTarget(branchDTO.getMonthlySalesTarget());
         existing.setUpdatedAt(LocalDateTime.now());
 
         Branch updtedBranch = branchRepository.save(existing);

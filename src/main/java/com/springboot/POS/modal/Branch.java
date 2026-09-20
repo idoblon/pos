@@ -22,6 +22,8 @@ public class Branch {
     private String address;
     private String phone;
     private String email;
+    @Column(nullable = false)
+    private Double monthlySalesTarget = 0D;
     @ElementCollection
     private List<String> workingDays;
     private LocalTime openTime;

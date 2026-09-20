@@ -11,6 +11,7 @@ import com.springboot.POS.service.ShiftReportService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -142,6 +143,39 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public List<ShiftReportDTO> getShiftReportByBranchId(Long branchId) {
         List<ShiftReport> reports = shiftReportRepository.findByBranchIdIncludingCashierBranch(branchId);
         return reports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public ShiftReportDTO saveHandover(Long shiftReportId, Double cashCounted, String notes, String nextTasks) throws Exception {
+        User currentUser = userService.getCurrentUser();
+        ShiftReport report = shiftReportRepository.findById(shiftReportId)
+                .orElseThrow(() -> new Exception("Shift report not found"));
+        if (report.getCashier() == null || !report.getCashier().getId().equals(currentUser.getId())) {
+            throw new IllegalAccessException("You can only save a handover for your own shift");
+        }
+        if (cashCounted != null && (!Double.isFinite(cashCounted) || cashCounted < 0)) {
+            throw new IllegalArgumentException("Cash counted must be a non-negative number");
+        }
+        report.setHandoverCashCounted(cashCounted);
+        report.setHandoverNotes(notes == null ? "" : notes.trim());
+        report.setHandoverNextTasks(nextTasks == null ? "" : nextTasks.trim());
+        report.setHandoverSavedAt(LocalDateTime.now());
+        return ShiftReportMapper.toDTO(shiftReportRepository.save(report));
+    }
+
+    @Override
+    public ShiftReportDTO getLatestHandoverForCurrentBranch() throws Exception {
+        User currentUser = userService.getCurrentUser();
+        Branch branch = currentUser.getBranch();
+        if (branch == null && currentUser.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            branch = branchRepository.findByManagerId(currentUser.getId()).orElse(null);
+        }
+        if (branch == null) throw new Exception("Current user is not assigned to a branch");
+        return shiftReportRepository
+                .findTopByBranchIdAndHandoverSavedAtIsNotNullOrderByHandoverSavedAtDesc(branch.getId())
+                .map(ShiftReportMapper::toDTO)
+                .orElse(null);
     }
 
     @Override
