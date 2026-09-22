@@ -1,6 +1,7 @@
 package com.springboot.POS.controller;
 
 import com.springboot.POS.domain.StoreStatus;
+import com.springboot.POS.domain.UserRole;
 import com.springboot.POS.exceptions.UserException;
 import com.springboot.POS.mapper.StoreMapper;
 import com.springboot.POS.modal.Store;
@@ -9,8 +10,10 @@ import com.springboot.POS.payload.dto.StoreDTO;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
+import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +25,7 @@ public class StoreController {
 
     private final StoreService storeService;
     private final UserService userService;
+    private final OwnershipGuard ownershipGuard;
 
     @PostMapping
     public ResponseEntity<StoreDTO> createStore(@RequestBody StoreDTO storeDTO,
@@ -35,10 +39,16 @@ public class StoreController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
 
-        // Convert entities to DTOs and enrich with registration subscription data
-        List<StoreDTO> storeDTOs = storeService.getAllStoreDTOs();
-
-        return ResponseEntity.ok(storeDTOs);
+        if (user.getRole() == UserRole.ROLE_ADMIN) {
+            return ResponseEntity.ok(storeService.getAllStoreDTOs());
+        }
+        // Non-admins only ever see their own store — never the full tenant list.
+        Store own = user.getStore() != null ? user.getStore()
+                : (user.getBranch() != null ? user.getBranch().getStore() : null);
+        if (own == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(List.of(StoreMapper.toDTO(own)));
     }
 
     @GetMapping("/admin")
@@ -61,10 +71,12 @@ public class StoreController {
                                                 @RequestBody StoreDTO storeDTO,
                                                 @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, id);
         return ResponseEntity.ok(storeService.updateStore(id, storeDTO));
     }
 
     @PutMapping("/{id}/moderate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StoreDTO> moderateStore(@PathVariable Long id,
                                                   @RequestParam StoreStatus status,
                                                   @RequestHeader("Authorization") String jwt) throws Exception {
@@ -76,10 +88,12 @@ public class StoreController {
     public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id,
                                                  @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, id);
         return ResponseEntity.ok(storeService.getStoreById(id));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> deleteStore(@PathVariable Long id,
                                                    @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
@@ -90,6 +104,7 @@ public class StoreController {
     }
 
     @PostMapping("/admin/backfill-subscription-dates")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> backfillSubscriptionDates(
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);

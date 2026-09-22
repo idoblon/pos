@@ -3,6 +3,8 @@ package com.springboot.POS.payload.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 public class OrderItemDTO {
@@ -11,13 +13,13 @@ public class OrderItemDTO {
 
     private Integer quantity;
 
-    private Double price;
+    private BigDecimal price;
 
     private ProductDTO product;
 
     private Long productId;
     private Long orderId;
 
-    private Double unitPrice;
+    private BigDecimal unitPrice;
 
 }

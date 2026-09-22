@@ -12,12 +12,14 @@ import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.service.CategoryService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
@@ -50,8 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
 
             return CategoryMapper.toDTO(categoryRepository.save(category));
         } catch (Exception e) {
-            System.err.println("Error creating category: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error creating category", e);
             throw e;
         }
     }
@@ -126,10 +127,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private void checkAuthority(User user, Store store) throws Exception {
-        System.out.println("Checking authority for user: " + user.getEmail());
-        System.out.println("User role: " + user.getRole());
-        System.out.println("User store: " + (user.getStore() != null ? user.getStore().getId() : "null"));
-        System.out.println("Target store: " + store.getId());
+        log.debug("Checking authority for user id={} role={} userStore={} targetStore={}",
+                user.getId(), user.getRole(),
+                user.getStore() != null ? user.getStore().getId() : null,
+                store.getId());
         
         // Admin can manage any store
         if (user.getRole().equals(UserRole.ROLE_ADMIN)) {
@@ -153,6 +154,6 @@ public class CategoryServiceImpl implements CategoryService {
             throw new Exception("You don't have permission to manage categories");
         }
         
-        System.out.println("Authority check passed");
+        log.debug("Authority check passed for target store {}", store.getId());
     }
 }

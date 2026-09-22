@@ -19,10 +19,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
 public class AdminPaymentController {
 
     @Value("${app.frontend-url:http://localhost:5173}")
@@ -68,6 +70,54 @@ public class AdminPaymentController {
             ));
         } catch (Exception e) {
             return ResponseEntity.ok(java.util.Map.of("status", "FAILED", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Registrations awaiting payment (status = PAYMENT_PENDING) — used by the
+     * admin store-payment simulation screen.
+     */
+    @GetMapping("/store-requests/payment-pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<StoreRegistrationRequest>> getPaymentPendingStoreRequests() {
+        return ResponseEntity.ok(
+                storeRegistrationRequestRepository.findByStatusOrderByCreatedAtDesc("PAYMENT_PENDING"));
+    }
+
+    /**
+     * Manually record an offline/simulated store payment: marks the registration's
+     * payment as completed so the request becomes ready for approval.
+     */
+    @PostMapping("/store-payment/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> completeStorePayment(
+            @RequestBody StorePaymentCompleteRequest request,
+            @RequestHeader("Authorization") String jwt) {
+        try {
+            if (request.getEmail() == null || request.getEmail().isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
+            }
+            User admin = userService.getUserFromJwtToken(jwt);
+            StoreRegistrationRequest reg = storeRegistrationRequestRepository
+                    .findByEmail(request.getEmail()).orElse(null);
+            if (reg == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "No registration found for " + request.getEmail()));
+            }
+            String reference = request.getPaymentDetails() != null
+                    && request.getPaymentDetails().getTransactionId() != null
+                    && !request.getPaymentDetails().getTransactionId().isBlank()
+                    ? request.getPaymentDetails().getTransactionId()
+                    : "MANUAL-" + System.currentTimeMillis();
+            if (paymentService.canMarkPaymentCompleted(reg.getId())) {
+                paymentService.adminMarkPaymentCompleted(reg.getId(), reference, admin.getId());
+            }
+            return ResponseEntity.ok(Map.of(
+                    "paymentId", reg.getId(),
+                    "message", "Payment completed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Failed to complete payment: " + e.getMessage()));
         }
     }
 
@@ -214,6 +264,45 @@ public class AdminPaymentController {
     }
 
     // DTO Classes
+    /** Request body of POST /api/admin/store-payment/complete (admin payment simulation). */
+    public static class StorePaymentCompleteRequest {
+        private Long storeId;
+        private String storeName;
+        private String ownerName;
+        @NotBlank(message = "Email is required")
+        private String email;
+        private String phone;
+        private String subscriptionPlan;
+        private PaymentDetails paymentDetails;
+
+        public Long getStoreId() { return storeId; }
+        public void setStoreId(Long storeId) { this.storeId = storeId; }
+        public String getStoreName() { return storeName; }
+        public void setStoreName(String storeName) { this.storeName = storeName; }
+        public String getOwnerName() { return ownerName; }
+        public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getPhone() { return phone; }
+        public void setPhone(String phone) { this.phone = phone; }
+        public String getSubscriptionPlan() { return subscriptionPlan; }
+        public void setSubscriptionPlan(String subscriptionPlan) { this.subscriptionPlan = subscriptionPlan; }
+        public PaymentDetails getPaymentDetails() { return paymentDetails; }
+        public void setPaymentDetails(PaymentDetails paymentDetails) { this.paymentDetails = paymentDetails; }
+    }
+
+    public static class PaymentDetails {
+        private Double amount;
+        private String method;
+        private String transactionId;
+
+        public Double getAmount() { return amount; }
+        public void setAmount(Double amount) { this.amount = amount; }
+        public String getMethod() { return method; }
+        public void setMethod(String method) { this.method = method; }
+        public String getTransactionId() { return transactionId; }
+        public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+    }
     public static class PaymentCompletionRequest {
         @NotBlank(message = "Reference is required")
         private String reference;

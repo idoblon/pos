@@ -7,11 +7,13 @@ import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/inventories")
@@ -83,7 +85,7 @@ public class InventoryController {
     public ResponseEntity<List<InventoryDTO>> getInventoryByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {
-        System.out.println("CONTROLLER: GET /api/inventories/store/" + storeId);
+        log.debug("GET /api/inventories/store/{}", storeId);
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
         // Use warehouse inventory query which is confirmed working with native SQL
@@ -95,7 +97,7 @@ public class InventoryController {
         List<InventoryDTO> result = new java.util.ArrayList<>();
         result.addAll(warehouse);
         result.addAll(branches);
-        System.out.println("CONTROLLER: Returning " + result.size() + " items (" + warehouse.size() + " warehouse + " + branches.size() + " branch)");
+        log.debug("Returning {} items ({} warehouse + {} branch)", result.size(), warehouse.size(), branches.size());
         return ResponseEntity.ok(result);
     }
 

@@ -7,6 +7,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,53 +22,49 @@ import java.io.IOException;
 import java.util.List;
 
 public class JwtValidator extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtValidator.class);
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-                String jwt = request.getHeader(JwtConstant.JWT_HEADER);
-                String requestURI = request.getRequestURI();
-                
-                System.out.println("🔍 JWT DEBUG - Request URI: " + requestURI);
-                System.out.println("🔍 JWT DEBUG - JWT Header present: " + (jwt != null));
-                
-                //Bearer jwt
-                if(jwt != null){
-                    System.out.println("🔍 JWT DEBUG - JWT Header value: " + jwt.substring(0, Math.min(jwt.length(), 20)) + "...");
-                    jwt = jwt.substring(7);
-                    try{
-                        SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
-                        Claims claims = Jwts.parser()
-                                .verifyWith(key)
-                                .build()
-                                .parseSignedClaims(jwt)
-                                .getPayload();
+        String requestURI = request.getRequestURI();
 
-                        String email = String.valueOf(claims.get("email"));
-                        String authorities = String.valueOf(claims.get("authorities"));
-                        
-                        System.out.println("✅ JWT DEBUG - JWT validation successful for: " + email);
-                        System.out.println("🔍 JWT DEBUG - Authorities: " + authorities);
+        // /auth/refresh intentionally accepts an expired-but-signed token; it must
+        // reach the controller unauthenticated instead of failing here.
+        if (requestURI != null && requestURI.startsWith("/auth/refresh")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-                        List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
-                                authorities
-                        );
-                        Authentication auth = new UsernamePasswordAuthenticationToken(email,null, auths);
-                        SecurityContextHolder.getContext().setAuthentication(
-                                auth
-                        );
+        String jwt = request.getHeader(JwtConstant.JWT_HEADER);
+        if (jwt != null) {
+            jwt = jwt.substring(7);
+            try {
+                SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
+                Claims claims = Jwts.parser()
+                        .verifyWith(key)
+                        .build()
+                        .parseSignedClaims(jwt)
+                        .getPayload();
 
-                    }
-                    catch(Exception e){
-                        System.err.println("❌ JWT DEBUG - JWT validation failed: " + e.getMessage());
-                        e.printStackTrace();
-                        throw new BadCredentialsException("Invalid JWT....");
-                    }
-                } else {
-                    System.out.println("⚠️ JWT DEBUG - No JWT header found for: " + requestURI);
-                }
+                String email = String.valueOf(claims.get("email"));
+                String authorities = String.valueOf(claims.get("authorities"));
 
-                filterChain.doFilter(request,response);
+                List<GrantedAuthority> auths = AuthorityUtils.commaSeparatedStringToAuthorityList(
+                        authorities
+                );
+                Authentication auth = new UsernamePasswordAuthenticationToken(email, null, auths);
+                SecurityContextHolder.getContext().setAuthentication(auth);
+
+            } catch (Exception e) {
+                log.debug("JWT validation failed for path {} : {}", requestURI, e.getClass().getSimpleName());
+                throw new BadCredentialsException("Invalid JWT....");
+            }
+        }
+
+        filterChain.doFilter(request, response);
     }
 }

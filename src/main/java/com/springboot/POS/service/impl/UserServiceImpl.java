@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,28 @@ public class UserServiceImpl implements UserService {
         }
 
         return user;
+    }
+
+    @Override
+    public User updateOwnProfile(Long userId, UserDTO userDTO) throws Exception {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException("User not found"));
+
+        if (userDTO.getFullName() != null && !userDTO.getFullName().isBlank()) {
+            user.setFullName(userDTO.getFullName().trim());
+        }
+        if (userDTO.getPhone() != null) {
+            user.setPhone(userDTO.getPhone().trim());
+        }
+        if (userDTO.getEmail() != null && !userDTO.getEmail().isBlank()
+                && !userDTO.getEmail().equalsIgnoreCase(user.getEmail())) {
+            Optional<User> existing = userRepository.findByEmail(userDTO.getEmail().trim());
+            if (existing.isPresent()) {
+                throw new UserException("Email is already in use");
+            }
+            user.setEmail(userDTO.getEmail().trim());
+        }
+        return userRepository.save(user);
     }
 
     @Override

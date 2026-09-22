@@ -9,6 +9,7 @@ import com.springboot.POS.payload.dto.UserDTO;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,9 +18,9 @@ import java.util.List;
 public class OrderDTO {
 
     private Long id;
-    private Double totalAmount;
-    private Double taxAmount;
-    private Double discount;
+    private BigDecimal totalAmount;
+    private BigDecimal taxAmount;
+    private BigDecimal discount;
     private String discountType;
     private String note;
     private LocalDateTime createdAt;
@@ -33,7 +34,7 @@ public class OrderDTO {
     private String paymentMethod;    // frontend sends paymentMethod as string
     private String paymentReference; // eSewa ref / Khalti token / card last-4
     private String transactionId;     // alias for paymentReference from frontend
-    private Double amountReceived;   // CASH only
+    private BigDecimal amountReceived;   // CASH only
     private OrderStatus status;
     private List<OrderItemDTO> items;
 

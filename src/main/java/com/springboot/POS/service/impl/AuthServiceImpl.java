@@ -196,7 +196,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse refreshToken(String jwt) throws UserException {
-        String email = jwtProvider.getEmailFromToken(jwt);
+        String email = jwtProvider.getEmailFromRefreshToken(jwt);
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             throw new UserException("User not found");

@@ -84,7 +84,7 @@ public class AnalyticsController {
             LocalDateTime from = LocalDate.now().minusMonths(i).withDayOfMonth(1).atStartOfDay();
             LocalDateTime to = from.plusMonths(1);
             List<Order> orders = orderRepository.findByStoreIdAndCreatedAtBetween(storeId, from, to);
-            double sales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+            double sales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
             Map<String, Object> point = new LinkedHashMap<>();
             point.put("period", from.getMonth().name());
             point.put("sales", sales);
@@ -113,7 +113,7 @@ public class AnalyticsController {
                 productNames.put(pid, item.getProduct().getName());
                 productStats.computeIfAbsent(pid, k -> new double[]{0, 0});
                 productStats.get(pid)[0] += item.getQuantity();
-                productStats.get(pid)[1] += item.getPrice();
+                productStats.get(pid)[1] += item.getPrice().doubleValue();
             }
         }
 
@@ -141,7 +141,7 @@ public class AnalyticsController {
         ownershipGuard.requireStoreAccess(user, storeId);
 
         List<Order> orders = orderRepository.findByStoreId(storeId);
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
 
         Map<PaymentType, List<Order>> grouped = orders.stream()
                 .filter(o -> o.getPaymentType() != null)
@@ -149,7 +149,7 @@ public class AnalyticsController {
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<PaymentType, List<Order>> entry : grouped.entrySet()) {
-            double amount = entry.getValue().stream().mapToDouble(Order::getTotalAmount).sum();
+            double amount = entry.getValue().stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("paymentType", entry.getKey());
             m.put("amount", amount);
@@ -175,8 +175,8 @@ public class AnalyticsController {
         List<Order> yesterday = orderRepository.findByBranchIdAndCreatedAtBetween(
                 branchId, yesterdayStart, todayStart);
 
-        double todaySales = today.stream().mapToDouble(Order::getTotalAmount).sum();
-        double yesterdaySales = yesterday.stream().mapToDouble(Order::getTotalAmount).sum();
+        double todaySales = today.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
+        double yesterdaySales = yesterday.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         double change = yesterdaySales == 0 ? 100.0
                 : ((todaySales - yesterdaySales) / yesterdaySales) * 100;
 
@@ -244,7 +244,7 @@ public class AnalyticsController {
                     .filter(s -> empId.equals(s.getCashier().getId()))
                     .collect(Collectors.toList());
 
-            double totalSales = empOrders.stream().mapToDouble(Order::getTotalAmount).sum();
+            double totalSales = empOrders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
             double totalRefunds = empRefunds.stream().mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
             long totalShifts = empShifts.size();
             long activeShifts = empShifts.stream().filter(s -> s.getShiftEnd() == null).count();
@@ -283,7 +283,7 @@ public class AnalyticsController {
 
     private Map<String, Object> buildSummary(List<Order> orders, Long storeId,
                                               String startDate, String endDate) {
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         Set<Long> uniqueCustomers = orders.stream()
                 .filter(o -> o.getCustomer() != null)
                 .map(o -> o.getCustomer().getId())

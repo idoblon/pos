@@ -3,6 +3,7 @@ package com.springboot.POS.controller;
 import com.springboot.POS.modal.SubscriptionChangeRequest;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.response.ApiResponse;
+import com.springboot.POS.repository.SubscriptionChangeRequestRepository;
 import com.springboot.POS.service.SubscriptionChangeRequestService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,29 @@ public class SubscriptionChangeRequestController {
     
     private final SubscriptionChangeRequestService changeRequestService;
     private final UserService userService;
+    private final SubscriptionChangeRequestRepository changeRequestRepository;
+
+    /**
+     * Admin marks an upgrade/downgrade request's payment as received
+     * (offline/bank transfer confirmation).
+     */
+    @PostMapping("/admin/subscription-upgrade-requests/{id}/mark-paid")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> markChangeRequestPaid(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body) throws Exception {
+        SubscriptionChangeRequest request = changeRequestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Subscription change request not found"));
+        String reference = body != null ? body.get("reference") : null;
+        if (reference != null && !reference.isBlank()) {
+            request.setPaymentReference(reference.trim());
+        }
+        request.setStatus("PAID");
+        request.setPaidAt(LocalDateTime.now());
+        SubscriptionChangeRequest saved = changeRequestRepository.save(request);
+        log.info("Admin marked subscription change request {} as paid", id);
+        return ResponseEntity.ok(saved);
+    }
     
     @PostMapping("/subscription-upgrade-requests")
     @PreAuthorize("hasRole('STORE_ADMIN')")

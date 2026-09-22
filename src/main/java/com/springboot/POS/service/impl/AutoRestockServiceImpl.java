@@ -6,11 +6,13 @@ import com.springboot.POS.repository.*;
 import com.springboot.POS.service.AutoRestockService;
 import com.springboot.POS.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AutoRestockServiceImpl implements AutoRestockService {
@@ -112,7 +114,7 @@ public class AutoRestockServiceImpl implements AutoRestockService {
             );
         }
 
-        System.out.println("🤖 Auto-created restock request for " + inventory.getProduct().getName() 
-                + " at " + inventory.getBranch().getName());
+        log.info("Auto-created restock request for {} at {}",
+                inventory.getProduct().getName(), inventory.getBranch().getName());
     }
 }

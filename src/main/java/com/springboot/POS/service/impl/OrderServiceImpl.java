@@ -14,8 +14,13 @@ import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.OrderPaymentService;
 import com.springboot.POS.service.OrderService;
 import com.springboot.POS.service.UserService;
+import com.springboot.POS.util.OrderTotals;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,6 +45,10 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final OrderPaymentService orderPaymentService;
     private final BranchRepository branchRepository;
+
+    /** VAT rate as a decimal fraction (0.13 = 13%). */
+    @Value("${app.tax.rate:0.13}")
+    private BigDecimal taxRate;
 
     @Override
     @Transactional
@@ -76,32 +85,12 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> orderItems = buildOrderItems(orderDTO);
 
         BigDecimal subtotal = orderItems.stream()
-                .map(item -> BigDecimal.valueOf(item.getPrice()))
+                .map(OrderItem::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal taxAmount = subtotal.multiply(new BigDecimal("0.13"))
-                .setScale(2, RoundingMode.HALF_UP);
-
-        BigDecimal discountAmount = BigDecimal.ZERO;
-        if (orderDTO.getDiscount() != null) {
-            if (!Double.isFinite(orderDTO.getDiscount()) || orderDTO.getDiscount() < 0) {
-                throw new IllegalArgumentException("Discount must be a non-negative number");
-            }
-            BigDecimal discount = BigDecimal.valueOf(orderDTO.getDiscount());
-            if ("percentage".equalsIgnoreCase(orderDTO.getDiscountType())) {
-                if (discount.compareTo(BigDecimal.valueOf(100)) > 0) {
-                    throw new IllegalArgumentException("Percentage discount cannot exceed 100");
-                }
-                discountAmount = subtotal.multiply(discount)
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            } else {
-                if (discount.compareTo(subtotal) > 0) {
-                    throw new IllegalArgumentException("Discount cannot exceed the order subtotal");
-                }
-                discountAmount = discount.setScale(2, RoundingMode.HALF_UP);
-            }
-        }
-
-        BigDecimal finalTotal = subtotal.add(taxAmount).subtract(discountAmount);
+        BigDecimal taxAmount = OrderTotals.tax(subtotal, taxRate);
+        BigDecimal discountAmount = OrderTotals.discountAmount(
+                subtotal, orderDTO.getDiscount(), orderDTO.getDiscountType());
+        BigDecimal finalTotal = OrderTotals.total(subtotal, taxAmount, discountAmount);
 
         // Resolve reference from either paymentReference or transactionId
         String paymentRef = orderDTO.getPaymentReference() != null
@@ -112,7 +101,7 @@ public class OrderServiceImpl implements OrderService {
         orderPaymentService.verify(
                 paymentType,
                 paymentRef,
-                orderDTO.getAmountReceived(),
+                orderDTO.getAmountReceived() != null ? orderDTO.getAmountReceived().doubleValue() : null,
                 finalTotal.doubleValue(),
                 storeId
         );
@@ -130,9 +119,9 @@ public class OrderServiceImpl implements OrderService {
                 .customer(customer)
                 .paymentType(paymentType)
                 .paymentReference(paymentRef)
-                .amountReceived(paymentType == PaymentType.CASH ? orderDTO.getAmountReceived() : finalTotal.doubleValue())
-                .totalAmount(finalTotal.doubleValue())
-                .taxAmount(taxAmount.doubleValue())
+                .amountReceived(paymentType == PaymentType.CASH ? orderDTO.getAmountReceived() : finalTotal)
+                .totalAmount(finalTotal)
+                .taxAmount(taxAmount)
                 .discount(orderDTO.getDiscount())
                 .discountType(orderDTO.getDiscountType())
                 .note(orderDTO.getNote())
@@ -151,6 +140,27 @@ public class OrderServiceImpl implements OrderService {
         return OrderMapper.toDTO(savedOrder);
     }
 
+    /**
+     * Lost the idempotency race against a concurrent identical request?
+     * The unique idempotency_key constraint rejects the duplicate insert with
+     * {@link DataIntegrityViolationException}; the winner row is then read in a
+     * fresh transaction (this method is invoked from outside the failed one).
+     */
+    @Override
+    public OrderDTO getOrderByIdempotencyKey(String rawKey) throws Exception {
+        if (rawKey == null || rawKey.isBlank()) return null;
+        User cashier = userService.getCurrentUser();
+        String scoped = cashier.getId() + ":" + rawKey.trim();
+        return orderRepository.findByIdempotencyKey(scoped).map(OrderMapper::toDTO).orElse(null);
+    }
+
+    @Override
+    public List<OrderDTO> getAllOrders(int limit) {
+        return orderRepository.findAll(PageRequest.of(0, com.springboot.POS.util.QueryLimits.clamp(limit),
+                        Sort.by(Sort.Direction.DESC, "createdAt")))
+                .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
+    }
+
     @Override
     @Transactional
     public OrderDTO holdOrder(OrderDTO orderDTO) throws Exception {
@@ -162,7 +172,7 @@ public class OrderServiceImpl implements OrderService {
         if (branch == null) throw new Exception("Cashier's branch not found");
 
         List<OrderItem> orderItems = buildOrderItems(orderDTO);
-        BigDecimal subtotal = orderItems.stream().map(item -> BigDecimal.valueOf(item.getPrice()))
+        BigDecimal subtotal = orderItems.stream().map(OrderItem::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         Customer customer = orderDTO.getCustomerId() == null ? null
                 : customerRepository.findById(orderDTO.getCustomerId()).orElse(null);
@@ -172,8 +182,8 @@ public class OrderServiceImpl implements OrderService {
                 .cashier(cashier)
                 .customer(customer)
                 .paymentType(paymentType)
-                .totalAmount(subtotal.doubleValue())
-                .taxAmount(0D)
+                .totalAmount(subtotal)
+                .taxAmount(BigDecimal.ZERO)
                 .discount(orderDTO.getDiscount())
                 .discountType(orderDTO.getDiscountType())
                 .note(orderDTO.getNote())
@@ -330,10 +340,11 @@ public class OrderServiceImpl implements OrderService {
             if (product.getSellingPrice() == null || product.getSellingPrice() < 0) {
                 throw new IllegalStateException("Product has an invalid selling price: " + product.getId());
             }
-            double unitPrice = product.getSellingPrice();
+            BigDecimal unitPrice = BigDecimal.valueOf(product.getSellingPrice())
+                    .setScale(2, RoundingMode.HALF_UP);
             return OrderItem.builder().product(product).quantity(entry.getValue()).unitPrice(unitPrice)
-                    .price(BigDecimal.valueOf(unitPrice).multiply(BigDecimal.valueOf(entry.getValue()))
-                            .setScale(2, RoundingMode.HALF_UP).doubleValue())
+                    .price(unitPrice.multiply(BigDecimal.valueOf(entry.getValue()))
+                            .setScale(2, RoundingMode.HALF_UP))
                     .build();
         }).collect(Collectors.toList());
     }

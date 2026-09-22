@@ -1,6 +1,7 @@
 package com.springboot.POS.payload.dto;
 
 import com.springboot.POS.domain.UserRole;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,6 +24,7 @@ public class UserDTO {
 
     private UserRole role;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private Long branchId;

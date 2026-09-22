@@ -15,12 +15,14 @@ import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StoreServiceImpl implements StoreService {
@@ -329,10 +331,7 @@ public class StoreServiceImpl implements StoreService {
         
         Store savedStore = storeRepository.save(store);
         
-        System.out.println("✅ Store created: " + storeName + 
-            " | Email from registration: " + email + 
-            " | Contact Email in DB: " + (savedStore.getContact() != null ? savedStore.getContact().getEmail() : "NULL") +
-            " | Store ID: " + savedStore.getId());
+        log.info("Store created: {} | Store ID: {}", storeName, savedStore.getId());
         
         return savedStore;
     }

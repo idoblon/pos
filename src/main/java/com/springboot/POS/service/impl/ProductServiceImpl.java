@@ -6,6 +6,7 @@ import com.springboot.POS.payload.dto.ProductDTO;
 import com.springboot.POS.repository.*;
 import com.springboot.POS.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
@@ -51,8 +53,8 @@ public class ProductServiceImpl implements ProductService {
                                         .quantity(0)
                                         .build();
                                 inventoryRepository.save(inventory);
-                                System.out.println("✅ Created inventory for product " + savedProduct.getName() + 
-                                        " in branch " + branch.getName());
+                                log.debug("Created inventory for product {} in branch {}",
+                                        savedProduct.getName(), branch.getName());
                         }
                 }
 
@@ -74,7 +76,7 @@ public class ProductServiceImpl implements ProductService {
                         product.setSku(productDTO.getSku());
                 }
                 if (productDTO.getImage() != null && !productDTO.getImage().isEmpty()) {
-                        System.out.println("📸 Updating image, length: " + productDTO.getImage().length());
+                        log.debug("Updating image, length: {}", productDTO.getImage().length());
                         product.setImage(productDTO.getImage());
                 }
                 if (productDTO.getMrp() != null) {
@@ -95,7 +97,8 @@ public class ProductServiceImpl implements ProductService {
                 }
 
                 Product savedProduct = productRepository.save(product);
-                System.out.println("💾 Saved product image length: " + (savedProduct.getImage() != null ? savedProduct.getImage().length() : "null"));
+                log.debug("Saved product image length: {}",
+                        savedProduct.getImage() != null ? savedProduct.getImage().length() : -1);
                 return ProductMapper.toDTO(savedProduct);
         }
 

@@ -89,13 +89,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 currentUser, shiftReport.getShiftStart(), shiftReport.getShiftEnd()
         );
 
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
 
         double cashSales = orders.stream()
                 .filter(o -> o.getPaymentType() == PaymentType.CASH)
-                .mapToDouble(Order::getTotalAmount).sum();
+                .mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         double cashRefunds = refunds.stream()
                 .filter(r -> r.getPaymentType() == PaymentType.CASH)
                 .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
@@ -203,7 +203,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
         double totalRefunds = refunds.stream()
                 .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
 
@@ -250,7 +250,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
         double totalRefunds = refunds.stream()
                 .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
 
@@ -301,7 +301,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<PaymentSummary> summaries = new ArrayList<>();
         for (Map.Entry<PaymentType, List<Order>> entry : grouped.entrySet()) {
             double amount = entry.getValue().stream()
-                    .mapToDouble(Order::getTotalAmount).sum();
+                    .mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
             int transactions = entry.getValue().size();
             double percent = totalSales > 0 ? (amount / totalSales) * 100 : 0.0;
 

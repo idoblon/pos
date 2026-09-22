@@ -5,6 +5,7 @@ import com.springboot.POS.domain.PaymentType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,11 +22,11 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
-    private Double taxAmount;
+    private BigDecimal taxAmount;
 
-    private Double discount;
+    private BigDecimal discount;
 
     private String discountType;
 
@@ -58,7 +59,7 @@ public class Order {
     private String paymentReference;
 
     // CASH only: raw amount handed over by customer
-    private Double amountReceived;
+    private BigDecimal amountReceived;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

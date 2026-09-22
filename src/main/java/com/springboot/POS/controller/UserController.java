@@ -5,6 +5,8 @@ import com.springboot.POS.mapper.UserMapper;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.UserDTO;
 import com.springboot.POS.service.UserService;
+import com.springboot.POS.service.impl.OwnershipGuard;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final OwnershipGuard ownershipGuard;
 
     @GetMapping("/api/users/profile")
     public ResponseEntity<UserDTO> getUserProfile(
@@ -27,11 +30,21 @@ public class UserController {
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
 
+    @PutMapping("/api/users/profile")
+    public ResponseEntity<UserDTO> updateUserProfile(
+            @RequestHeader("Authorization") String jwt,
+            @RequestBody UserDTO userDTO) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        User updated = userService.updateOwnProfile(user.getId(), userDTO);
+        return ResponseEntity.ok(UserMapper.toDTO(updated));
+    }
+
     @GetMapping("/api/users/{id}")
     public ResponseEntity<UserDTO> getUserById(
             @RequestHeader("Authorization") String jwt,
             @PathVariable Long id) throws UserException, Exception {
         User currentUser = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireUserAccess(currentUser, id);
         User user = userService.getUserById(id);
         if (user == null) {
             throw new UserException("User not found");
@@ -40,6 +53,7 @@ public class UserController {
     }
 
     @PutMapping("/api/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> updateUser(
             @RequestHeader("Authorization") String jwt,
             @PathVariable Long id,
@@ -48,11 +62,20 @@ public class UserController {
         return ResponseEntity.ok(UserMapper.toDTO(updatedUser));
     }
 
-    @GetMapping("/users/list")
-    public ResponseEntity<List<User>> getUserList(
-           ) throws UserException, Exception {
-        List<User> users = userService.getAllUser();
+    @GetMapping("/api/users/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getUserList() throws UserException, Exception {
+        List<UserDTO> users = userService.getAllUser().stream()
+                .map(UserMapper::toDTO)
+                .toList();
         return ResponseEntity.ok(users);
+    }
+
+    // Legacy alias (kept so older clients don't 404); same scope as /api/users/list.
+    @GetMapping("/users/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getUserListLegacy() throws UserException, Exception {
+        return getUserList();
     }
 
     @GetMapping("/api/users")
@@ -84,7 +107,7 @@ public class UserController {
     @PostMapping("/api/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDTO> createUser(
-            @RequestBody UserDTO userDTO) throws Exception {
+            @Valid @RequestBody UserDTO userDTO) throws Exception {
         User user = userService.createUser(userDTO);
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }

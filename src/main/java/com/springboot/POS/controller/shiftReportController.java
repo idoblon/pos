@@ -47,8 +47,15 @@ public class shiftReportController {
     @PatchMapping("/{id}/handover")
     public ResponseEntity<ShiftReportDTO> saveHandover(
             @PathVariable Long id,
-            @RequestBody ShiftHandoverRequest request
+            @RequestBody ShiftHandoverRequest request,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception {
+        com.springboot.POS.modal.User requester = userService.getUserFromJwtToken(jwt);
+        ShiftReportDTO report = shiftReportService.getShiftReportById(id);
+        if (report != null) {
+            if (report.getCashierId() != null) ownershipGuard.requireUserAccess(requester, report.getCashierId());
+            if (report.getBranchId() != null) ownershipGuard.requireBranchAccess(requester, report.getBranchId());
+        }
         return ResponseEntity.ok(shiftReportService.saveHandover(
                 id, request.cashCounted(), request.notes(), request.nextTasks()));
     }
@@ -63,24 +70,30 @@ public class shiftReportController {
     @GetMapping("/cashier/{cashierId}/by-date")
     public ResponseEntity<ShiftReportDTO> getShiftReportByDate(
             @PathVariable Long cashierId,
+            @RequestHeader("Authorization") String jwt,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime date
             ) throws Exception {
+        ownershipGuard.requireUserAccess(userService.getUserFromJwtToken(jwt), cashierId);
         return ResponseEntity.ok(
                 shiftReportService.getShiftByCashierAndDate(cashierId, date)
         );
     }
     @GetMapping("/cashier/{cashierId}")
     public ResponseEntity<List<ShiftReportDTO>> getShiftReportByCashier(
-            @PathVariable Long cashierId
+            @PathVariable Long cashierId,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception {
+        ownershipGuard.requireUserAccess(userService.getUserFromJwtToken(jwt), cashierId);
         return ResponseEntity.ok(
                 shiftReportService.getShiftReportByCashierId(cashierId)
         );
     }
     @GetMapping("/branch/{branchId}")
     public ResponseEntity<List<ShiftReportDTO>> getShiftReportByBranch(
-            @PathVariable Long branchId
+            @PathVariable Long branchId,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception {
+        ownershipGuard.requireBranchAccess(userService.getUserFromJwtToken(jwt), branchId);
         return ResponseEntity.ok(
                 shiftReportService.getShiftReportByBranchId(branchId)
         );
@@ -103,10 +116,15 @@ public class shiftReportController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ShiftReportDTO> getShiftReportById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt
     ) throws Exception {
-        return ResponseEntity.ok(
-                shiftReportService.getShiftReportById(id)
-        );
+        com.springboot.POS.modal.User requester = userService.getUserFromJwtToken(jwt);
+        ShiftReportDTO report = shiftReportService.getShiftReportById(id);
+        if (report != null) {
+            if (report.getCashierId() != null) ownershipGuard.requireUserAccess(requester, report.getCashierId());
+            if (report.getBranchId() != null) ownershipGuard.requireBranchAccess(requester, report.getBranchId());
+        }
+        return ResponseEntity.ok(report);
     }
 }

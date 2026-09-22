@@ -11,12 +11,14 @@ import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.BranchService;
 import com.springboot.POS.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class BranchServiceImpl implements BranchService {
 
@@ -76,28 +78,14 @@ public class BranchServiceImpl implements BranchService {
 
     @Override
     public List<BranchDTO> getAllBranchesByStoreId(Long storeId) {
-        System.out.println("=== GET BRANCHES DEBUG ===");
-        System.out.println("Requested storeId: " + storeId);
-        
         List<Branch> branches = branchRepository.findByStoreIdAndDeletedFalse(storeId);
-        System.out.println("Found branches count: " + branches.size());
-        
-        if (!branches.isEmpty()) {
-            branches.forEach(branch -> {
-                System.out.println("Branch ID: " + branch.getId() + 
-                                 ", Name: " + branch.getName() + 
-                                 ", Store ID: " + (branch.getStore() != null ? branch.getStore().getId() : "null") +
-                                 ", Deleted: " + branch.getDeleted());
-            });
-        }
-        
+        log.debug("Found {} branches for storeId {}", branches.size(), storeId);
+
         List<BranchDTO> result = branches.stream()
                 .map(BranchMapper::toDTO)
                 .collect(Collectors.toList());
-                
-        System.out.println("Returning DTOs count: " + result.size());
-        System.out.println("========================");
-        
+
+        log.debug("Returning {} branch DTOs for storeId {}", result.size(), storeId);
         return result;
     }
 

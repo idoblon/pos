@@ -3,6 +3,8 @@ package com.springboot.POS.modal;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -17,9 +19,9 @@ public class OrderItem {
 
     private Integer quantity;
 
-    private Double price;
+    private BigDecimal price;
 
-    private Double unitPrice;
+    private BigDecimal unitPrice;
 
     @ManyToOne
     private Product product;

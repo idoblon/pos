@@ -12,6 +12,8 @@ public interface UserService {
     User getCurrentUser() throws UserException;
     User getUserByEmail(String email) throws UserException;
     User getUserById(Long id) throws UserException, Exception;
+    /** Updates the caller's own profile (name/phone/email only — never role or scope). */
+    User updateOwnProfile(Long userId, UserDTO userDTO) throws Exception;
     List<User> getAllUser();
     User updateUser(Long id, UserDTO userDTO) throws Exception;
     void updatePassword(String currentPassword, String newPassword) throws Exception;

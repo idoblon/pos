@@ -10,11 +10,15 @@ import java.util.List;
 public interface OrderService {
 
     OrderDTO createOrder(OrderDTO orderDTO, String idempotencyKey) throws Exception;
+    /** Most recent orders across all tenants (admin scope), newest first, bounded. */
+    List<OrderDTO> getAllOrders(int limit);
     OrderDTO holdOrder(OrderDTO orderDTO) throws Exception;
     List<OrderDTO> getHeldOrders() throws Exception;
     OrderDTO resumeHeldOrder(Long id) throws Exception;
     void discardHeldOrder(Long id) throws Exception;
     OrderDTO getOrderById(Long id) throws Exception;
+    /** Winner of a lost idempotency race, or null when not found. */
+    OrderDTO getOrderByIdempotencyKey(String rawKey) throws Exception;
     List<OrderDTO> getOrdersByBranch(Long branchId,
                                      Long customerId,
                                      Long cashierId,

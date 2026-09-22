@@ -44,6 +44,25 @@ public class JwtProvider {
         return String.valueOf(claims.get("email"));
     }
 
+    /**
+     * Parses a token for the /auth/refresh flow: signature must be valid, but the
+     * token may already be expired (within a 7 day grace window) so the client can
+     * silently obtain a fresh token.
+     */
+    public String getEmailFromRefreshToken(String jwt){
+        if (jwt != null && jwt.startsWith("Bearer ")) {
+            jwt = jwt.substring(7);
+        }
+        Claims claims = Jwts.parser()
+                .verifyWith(getKey())
+                .clockSkewSeconds(7L * 24 * 3600)
+                .build()
+                .parseSignedClaims(jwt)
+                .getPayload();
+
+        return String.valueOf(claims.get("email"));
+    }
+
     private String populateAuthorities(Collection<? extends GrantedAuthority> authorities) {
         Set<String> auths = new HashSet<>();
         for(GrantedAuthority authority : authorities){

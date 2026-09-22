@@ -10,6 +10,7 @@ import com.springboot.POS.repository.InventoryRepository;
 import com.springboot.POS.repository.StockMovementRepository;
 import com.springboot.POS.service.StockMovementService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StockMovementServiceImpl implements StockMovementService {
@@ -57,8 +59,8 @@ public class StockMovementServiceImpl implements StockMovementService {
                 .build();
 
         stockMovementRepository.save(movement);
-        System.out.println("📊 Stock movement recorded: " + type + " | Product: " + 
-                inventory.getProduct().getName() + " | Qty: " + quantityChanged);
+        log.debug("Stock movement recorded: {} | Product: {} | Qty: {}",
+                type, inventory.getProduct().getName(), quantityChanged);
     }
 
     @Override

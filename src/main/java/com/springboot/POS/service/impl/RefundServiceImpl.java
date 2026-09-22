@@ -13,12 +13,15 @@ import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.RefundService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefundServiceImpl implements RefundService {
@@ -39,14 +42,14 @@ public class RefundServiceImpl implements RefundService {
         if (refund.getAmount() == null || refund.getAmount() <= 0) {
             throw new Exception("Refund amount must be greater than zero");
         }
-        if (refund.getAmount() > order.getTotalAmount()) {
+        if (BigDecimal.valueOf(refund.getAmount()).compareTo(order.getTotalAmount()) > 0) {
             throw new Exception("Refund amount (" + refund.getAmount() + ") cannot exceed order total (" + order.getTotalAmount() + ")");
         }
 
         // Check if order was already fully refunded
         List<Refund> existingRefunds = refundRepository.findByOrderId(order.getId());
         double totalRefunded = existingRefunds.stream().mapToDouble(Refund::getAmount).sum();
-        if (totalRefunded + refund.getAmount() > order.getTotalAmount()) {
+        if (totalRefunded + refund.getAmount() > order.getTotalAmount().doubleValue()) {
             throw new Exception("Total refunds would exceed order amount. Already refunded: " + totalRefunded);
         }
 
@@ -73,8 +76,8 @@ public class RefundServiceImpl implements RefundService {
                 );
             } catch (Exception e) {
                 // Log error but don't fail the refund
-                System.err.println("Failed to restore inventory for product " + 
-                    item.getProduct().getId() + ": " + e.getMessage());
+                log.warn("Failed to restore inventory for product {}: {}",
+                        item.getProduct().getId(), e.getMessage());
             }
         }
         

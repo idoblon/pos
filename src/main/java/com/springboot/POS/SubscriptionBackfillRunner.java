@@ -2,6 +2,8 @@ package com.springboot.POS;
 
 import com.springboot.POS.service.StoreService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SubscriptionBackfillRunner implements ApplicationRunner {
 
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionBackfillRunner.class);
+
     private final StoreService storeService;
 
     @Override
@@ -17,10 +21,10 @@ public class SubscriptionBackfillRunner implements ApplicationRunner {
         try {
             int count = storeService.backfillSubscriptionDates();
             if (count > 0) {
-                System.out.println("✅ Backfilled subscription dates for " + count + " existing stores.");
+                log.info("Backfilled subscription dates for {} existing stores.", count);
             }
         } catch (Exception e) {
-            System.err.println("⚠️ Subscription backfill failed: " + e.getMessage());
+            log.error("Subscription backfill failed: {}", e.getMessage());
         }
     }
 }

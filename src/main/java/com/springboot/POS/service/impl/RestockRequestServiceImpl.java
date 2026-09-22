@@ -9,12 +9,14 @@ import com.springboot.POS.service.EmailService;
 import com.springboot.POS.service.RestockRequestService;
 import com.springboot.POS.service.StockMovementService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RestockRequestServiceImpl implements RestockRequestService {
@@ -195,7 +197,7 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                         user
                 );
             } catch (Exception e) {
-                System.err.println("Failed to record stock movement: " + e.getMessage());
+                log.warn("Failed to record stock movement: {}", e.getMessage());
             }
         }
 
@@ -212,7 +214,7 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                     savedInventory.getQuantity()
             );
         } catch (Exception e) {
-            System.err.println("Failed to send restock fulfilled email: " + e.getMessage());
+            log.warn("Failed to send restock fulfilled email: {}", e.getMessage());
         }
 
         return RestockRequestMapper.toDTO(saved);
@@ -226,7 +228,7 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                     try {
                         return approveRequest(id, user);
                     } catch (Exception e) {
-                        System.err.println("Failed to approve request " + id + ": " + e.getMessage());
+                        log.warn("Failed to approve request {}: {}", id, e.getMessage());
                         return null;
                     }
                 })
@@ -242,7 +244,7 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                     try {
                         return rejectRequest(id, reason, user);
                     } catch (Exception e) {
-                        System.err.println("Failed to reject request " + id + ": " + e.getMessage());
+                        log.warn("Failed to reject request {}: {}", id, e.getMessage());
                         return null;
                     }
                 })
@@ -258,7 +260,7 @@ public class RestockRequestServiceImpl implements RestockRequestService {
                     try {
                         return fulfillRequest(id, user);
                     } catch (Exception e) {
-                        System.err.println("Failed to fulfill request " + id + ": " + e.getMessage());
+                        log.warn("Failed to fulfill request {}: {}", id, e.getMessage());
                         return null;
                     }
                 })

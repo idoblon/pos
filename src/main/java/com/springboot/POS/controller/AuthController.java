@@ -38,7 +38,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> loginHandler(
-            @RequestBody UserDTO userDto
+            @RequestBody @Valid UserDTO userDto
     ) throws UserException {
         return ResponseEntity.ok(
                 authService.login(userDto)

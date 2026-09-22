@@ -5,6 +5,7 @@ import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -66,6 +67,7 @@ public class EmailController {
     }
 
     @PostMapping("/store-approval")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> sendStoreApprovalEmail(@RequestBody EmailRequest request) {
         emailService   .sendStoreRegistrationApprovalNotification(
             request.getTo(),
@@ -79,6 +81,7 @@ public class EmailController {
     }
 
     @PostMapping("/store-credentials")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> sendStoreCredentialsEmail(@RequestBody EmailRequest request) {
         emailService.sendStoreRegistrationApproved(
             request.getTo(),
@@ -92,6 +95,7 @@ public class EmailController {
     }
 
     @PostMapping("/store-rejection")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse> sendStoreRejectionEmail(@RequestBody EmailRequest request) {
         emailService.sendStoreRegistrationRejected(
             request.getTo(),

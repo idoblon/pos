@@ -10,6 +10,7 @@ import com.springboot.POS.service.EmailService;
 import com.springboot.POS.service.PaymentService;
 import com.springboot.POS.service.StoreRegistrationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +20,7 @@ import java.util.List;
 
 import com.springboot.POS.repository.StoreRepository;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/public")
@@ -96,8 +98,7 @@ public class PublicController {
                 }
             } catch (Exception emailException) {
                 // Log email error but don't fail the registration
-                System.err.println("Failed to send email notification: " + emailException.getMessage());
-                emailException.printStackTrace();
+                log.warn("Failed to send email notification: {}", emailException.getMessage());
             }
             
             ApiResponse response = new ApiResponse();
