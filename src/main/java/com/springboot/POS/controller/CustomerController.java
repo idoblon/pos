@@ -9,6 +9,7 @@ import com.springboot.POS.service.CustomerService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,6 +47,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<Customer> update(
             @PathVariable Long id,
             @RequestBody Customer customer,
@@ -57,6 +59,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse> delete(
             @PathVariable Long id,
             @RequestHeader("Authorization") String jwt) throws Exception {

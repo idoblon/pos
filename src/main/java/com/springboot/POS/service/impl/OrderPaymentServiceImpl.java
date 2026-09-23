@@ -80,9 +80,11 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
             throw new Exception("eSewa is not configured for this store.");
         }
 
-        // Skip live API call for test/UAT merchant — accept any valid UUID format
+        // Test-merchant bypass is ONLY allowed in demo mode. In production the
+        // live eSewa status API below must confirm COMPLETE + amount match.
         if (ESEWA_TEST_MERCHANT.equalsIgnoreCase(merchantId)) {
-            return;
+            if (demoMode) return;
+            throw new Exception("eSewa test credentials are not accepted in production. Configure a live merchant.");
         }
 
         String url = UriComponentsBuilder.fromHttpUrl(esewaStatusUrl)
@@ -117,9 +119,10 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
             throw new Exception("Khalti is not configured for this store.");
         }
 
-        // Skip live API call for test secret key
+        // Test-secret bypass is ONLY allowed in demo mode.
         if (KHALTI_TEST_SECRET.equals(secretKey)) {
-            return;
+            if (demoMode) return;
+            throw new Exception("Khalti test credentials are not accepted in production. Configure a live secret.");
         }
 
         String url = UriComponentsBuilder.fromHttpUrl(khaltiBaseUrl + "/payment/status/")
@@ -154,9 +157,11 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
 
         String secretKey = resolveStripeSecretKey(storeId);
 
-        // Skip live Stripe call when using test key or no key configured
+        // Test-key bypass is ONLY allowed in demo mode. Production must use a
+        // live secret so the PaymentIntent below actually runs.
         if (secretKey == null || secretKey.isBlank() || secretKey.startsWith("sk_test_")) {
-            return;
+            if (demoMode) return;
+            throw new Exception("Card payments require a live Stripe secret in production.");
         }
 
         try {
@@ -191,11 +196,11 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
         if (type == PaymentType.CASH) return true;
         // Always allow in demo mode
         if (demoMode) return true;
-        // Check store-level config
+        // Check store-level config; fail closed when no explicit config row exists.
         var config = paymentConfigRepository.findFirstByStoreIdAndPaymentType(storeId, type);
         if (config.isPresent()) return Boolean.TRUE.equals(config.get().getIsEnabled());
-        // No config row — allow if global test credentials are set
-        return true;
+        // No config row — deny in production so unconfigured gateways cannot be used.
+        return false;
     }
 
     private String resolveStripeSecretKey(Long storeId) {

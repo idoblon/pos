@@ -39,7 +39,13 @@ public class EmployeeController {
             @PathVariable Long branchId,
             @RequestHeader("Authorization") String jwt,
             @Valid @RequestBody UserDTO userDTO) throws Exception {
-        ownershipGuard.requireBranchAccess(userService.getUserFromJwtToken(jwt), branchId);
+        User requester = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireBranchAccess(requester, branchId);
+        if (requester.getRole() == com.springboot.POS.domain.UserRole.ROLE_BRANCH_MANAGER
+                && userDTO.getRole() != com.springboot.POS.domain.UserRole.ROLE_BRANCH_CASHIER) {
+            throw new com.springboot.POS.exceptions.ResourceAccessDeniedException(
+                    "Branch managers can only create cashier accounts; managers are created by store admin");
+        }
         UserDTO employee = employeeService.createBranchEmployee(userDTO, branchId);
         return ResponseEntity.ok(employee);
     }
@@ -67,7 +73,7 @@ public class EmployeeController {
         if (target == null) {
             throw new com.springboot.POS.exceptions.UserException("Employee not found");
         }
-        ownershipGuard.requireStoreAccess(currentUser, ownershipGuard.resolveStoreIdOf(target));
+        requireEmployeeMutationAccess(currentUser, target, userDTO);
         User employee = employeeService.updateEmployee(id, userDTO);
         return ResponseEntity.ok(UserMapper.toDTO(employee));
     }
@@ -81,11 +87,47 @@ public class EmployeeController {
         if (target == null) {
             throw new com.springboot.POS.exceptions.UserException("Employee not found");
         }
-        ownershipGuard.requireStoreAccess(currentUser, ownershipGuard.resolveStoreIdOf(target));
+        requireEmployeeMutationAccess(currentUser, target, null);
         employeeService.deleteEmployee(id);
         ApiResponse apiResponse = new ApiResponse();
         apiResponse.setMessage("Employee deleted");
         return ResponseEntity.ok(apiResponse);
+    }
+
+    /**
+     * Store roles keep the previous store-wide check. Branch managers are
+     * scoped to their own branch: they may only mutate branch cashiers (or
+     * managers of their own branch), may never touch store/admin roles or
+     * other branches, and may never change roles or move branches.
+     */
+    private void requireEmployeeMutationAccess(User requester, User target,
+                                               UserDTO userDTO) throws Exception {
+        if (requester.getRole() != com.springboot.POS.domain.UserRole.ROLE_BRANCH_MANAGER) {
+            ownershipGuard.requireStoreAccess(requester, ownershipGuard.resolveStoreIdOf(target));
+            return;
+        }
+        Long requesterBranch = requester.getBranch() != null ? requester.getBranch().getId() : null;
+        Long targetBranch = target.getBranch() != null ? target.getBranch().getId() : null;
+        if (requesterBranch == null || targetBranch == null || !requesterBranch.equals(targetBranch)) {
+            throw new com.springboot.POS.exceptions.ResourceAccessDeniedException(
+                    "Branch managers can only manage employees of their own branch");
+        }
+        com.springboot.POS.domain.UserRole targetRole = target.getRole();
+        if (targetRole == com.springboot.POS.domain.UserRole.ROLE_ADMIN
+                || targetRole == com.springboot.POS.domain.UserRole.ROLE_STORE_ADMIN
+                || targetRole == com.springboot.POS.domain.UserRole.ROLE_STORE_MANAGER) {
+            throw new com.springboot.POS.exceptions.ResourceAccessDeniedException(
+                    "Branch managers cannot manage store-level accounts");
+        }
+        if (userDTO != null && userDTO.getRole() != null && userDTO.getRole() != targetRole) {
+            throw new com.springboot.POS.exceptions.ResourceAccessDeniedException(
+                    "Branch managers cannot change employee roles");
+        }
+        if (userDTO != null && userDTO.getBranchId() != null
+                && !userDTO.getBranchId().equals(targetBranch)) {
+            throw new com.springboot.POS.exceptions.ResourceAccessDeniedException(
+                    "Branch managers cannot move employees between branches");
+        }
     }
 
     @GetMapping("/store/{id}")

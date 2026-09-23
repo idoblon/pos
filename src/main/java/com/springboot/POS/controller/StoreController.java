@@ -8,6 +8,9 @@ import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StoreDTO;
 import com.springboot.POS.payload.response.ApiResponse;
+import com.springboot.POS.repository.BranchRepository;
+import com.springboot.POS.repository.UserRepository;
+import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
@@ -26,6 +29,31 @@ public class StoreController {
     private final StoreService storeService;
     private final UserService userService;
     private final OwnershipGuard ownershipGuard;
+    private final AdminAuditService auditService;
+    private final BranchRepository branchRepository;
+    private final UserRepository userRepository;
+
+    /**
+     * Admin stores overview — one call returning each store with branch and
+     * employee counts, replacing the dashboard's 2N+ fan-out
+     * (GET /api/branches/store/{id} + GET /api/employees/store/{id} per store).
+     */
+    @GetMapping("/admin/overview")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getStoresOverview() {
+        List<java.util.Map<String, Object>> rows = storeService.getAllStoreDTOs().stream().map(dto -> {
+            java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("store", dto);
+            try {
+                row.put("branchCount", branchRepository.findByStoreIdAndDeletedFalse(dto.getId()).size());
+            } catch (Exception ignored) { row.put("branchCount", 0); }
+            try {
+                row.put("employeeCount", userRepository.findByStore_IdAndDeletedFalse(dto.getId()).size());
+            } catch (Exception ignored) { row.put("employeeCount", 0); }
+            return row;
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(rows);
+    }
 
     @PostMapping
     public ResponseEntity<StoreDTO> createStore(@RequestBody StoreDTO storeDTO,
@@ -78,10 +106,28 @@ public class StoreController {
     @PutMapping("/{id}/moderate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StoreDTO> moderateStore(@PathVariable Long id,
-                                                  @RequestParam StoreStatus status,
+                                                  @RequestParam(required = false) StoreStatus status,
+                                                  @RequestParam(required = false) String action,
                                                   @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
-        return ResponseEntity.ok(storeService.moderateStore(id, status));
+        StoreStatus effective = status != null ? status : mapModerationAction(action);
+        if (effective == null) {
+            throw new IllegalArgumentException("Provide ?status=ACTIVE|PENDING|BLOCKED|SUSPENDED or ?action=APPROVE|REJECT|SUSPEND|ACTIVATE");
+        }
+        StoreDTO result = storeService.moderateStore(id, effective);
+        auditService.record(user.getId(), "STORE_MODERATE", "store", id, "Status -> " + effective);
+        return ResponseEntity.ok(result);
+    }
+
+    private StoreStatus mapModerationAction(String action) {
+        if (action == null) return null;
+        return switch (action.trim().toUpperCase()) {
+            case "APPROVE", "ACTIVATE" -> StoreStatus.ACTIVE;
+            case "SUSPEND" -> StoreStatus.SUSPENDED;
+            case "REJECT" -> StoreStatus.BLOCKED;
+            case "PENDING" -> StoreStatus.PENDING;
+            default -> null;
+        };
     }
 
     @GetMapping("/{id}")
@@ -98,6 +144,7 @@ public class StoreController {
                                                    @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         storeService.deleteStore(id);
+        auditService.record(user.getId(), "STORE_DELETE", "store", id, "Soft-delete (users detached, history preserved)");
         ApiResponse apiResponse = new ApiResponse();
         apiResponse.setMessage("Store deleted successfully");
         return ResponseEntity.ok(apiResponse);

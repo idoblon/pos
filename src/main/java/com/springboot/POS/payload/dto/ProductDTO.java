@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -27,11 +28,11 @@ public class ProductDTO {
     private String description;
 
     @Positive(message = "MRP must be positive")
-    private Double mrp;
+    private BigDecimal mrp;
 
     @NotNull(message = "Selling price is required")
     @Positive(message = "Selling price must be positive")
-    private Double sellingPrice;
+    private BigDecimal sellingPrice;
 
     private String brand;
     private String image;

@@ -10,6 +10,7 @@ import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class CategoryController {
         }
 
         @PostMapping
+        @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
         public ResponseEntity<CategoryDTO> createCategory(
                         @RequestBody CategoryDTO categoryDTO,
                         @RequestHeader("Authorization") String jwt) throws Exception {
@@ -54,6 +56,7 @@ public class CategoryController {
         }
 
         @PutMapping("/{id}")
+        @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
         public ResponseEntity<CategoryDTO> updateCategory(
                         @RequestBody CategoryDTO categoryDTO,
                         @PathVariable Long id,
@@ -65,6 +68,7 @@ public class CategoryController {
         }
 
         @PatchMapping("/{id}")
+        @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
         public ResponseEntity<CategoryDTO> patchCategory(
                         @RequestBody Map<String, Object> updates,
                         @PathVariable Long id,
@@ -76,6 +80,7 @@ public class CategoryController {
         }
 
         @DeleteMapping("/{id}")
+        @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
         public ResponseEntity<ApiResponse> deleteCategory(
                         @PathVariable Long id,
                         @RequestHeader("Authorization") String jwt) throws Exception {

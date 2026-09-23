@@ -3,6 +3,7 @@ package com.springboot.POS.controller;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StoreRegistrationRequestDTO;
 import com.springboot.POS.payload.response.ApiResponse;
+import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.StoreRegistrationService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class RegistrationRequestController {
 
     private final StoreRegistrationService registrationService;
     private final UserService userService;
+    private final AdminAuditService auditService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -52,6 +54,7 @@ public class RegistrationRequestController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
         registrationService.approveRequest(id, admin.getId());
+        auditService.record(admin.getId(), "REGISTRATION_APPROVE", "registration", id, "Approval email with payment link sent");
         ApiResponse response = new ApiResponse();
         response.setMessage("Approval email with payment link sent to applicant.");
         return ResponseEntity.ok(response);
@@ -64,6 +67,7 @@ public class RegistrationRequestController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
         registrationService.approveRequestWithOverride(id, admin.getId(), true);
+        auditService.record(admin.getId(), "REGISTRATION_APPROVE_FINAL", "registration", id, "Store approved with override; credentials sent");
         ApiResponse response = new ApiResponse();
         response.setMessage("Store approved. Login credentials sent to applicant.");
         return ResponseEntity.ok(response);
@@ -78,6 +82,8 @@ public class RegistrationRequestController {
         
         User admin = userService.getUserFromJwtToken(jwt);
         registrationService.rejectRequest(id, rejectRequest.getReason(), admin.getId());
+        auditService.record(admin.getId(), "REGISTRATION_REJECT", "registration", id,
+                "Reason: " + rejectRequest.getReason());
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Store registration request rejected successfully. Rejection email sent to applicant.");

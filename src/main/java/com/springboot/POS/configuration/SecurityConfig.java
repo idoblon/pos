@@ -38,7 +38,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   AuthRateLimitFilter authRateLimitFilter) throws Exception {
+                                                   AuthRateLimitFilter authRateLimitFilter,
+                                                   JwtValidator jwtValidator) throws Exception {
 
         return http
                 .sessionManagement(management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -53,13 +54,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/public/**").permitAll()  // Public endpoints like store registration
-                        .requestMatchers("/auth/forgot-password", "/auth/reset-password", "/auth/refresh").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login", "/auth/forgot-password", "/auth/reset-password", "/auth/refresh").permitAll()
+                        .requestMatchers("/", "/error").permitAll()
                         .requestMatchers("/api/restock-requests/**").authenticated()
                         .requestMatchers("/api/**").authenticated()
-                        .anyRequest().permitAll()
+                        // Default-deny: anything not explicitly permitted above requires authentication.
+                        // (Previously anyRequest().permitAll() left future endpoints open by default.)
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(authRateLimitFilter, BasicAuthenticationFilter.class)
-                .addFilterBefore(new JwtValidator(), BasicAuthenticationFilter.class)
+                .addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(
                         cors -> cors.configurationSource(corsConfigurationSource())

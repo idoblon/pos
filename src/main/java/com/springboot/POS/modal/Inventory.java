@@ -3,6 +3,7 @@ package com.springboot.POS.modal;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -34,7 +35,8 @@ public class Inventory {
     private Integer quantity;
 
     // Unit price for inventory value calculation
-    private Double unitPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal unitPrice;
 
     // Store reference for warehouse inventory (when branch is null)
     @ManyToOne

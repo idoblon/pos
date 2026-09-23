@@ -4,6 +4,7 @@ import com.springboot.POS.modal.Store;
 import com.springboot.POS.payload.dto.StoreRegistrationRequestDTO;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.response.ApiResponse;
+import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.StoreRegistrationService;
 import com.springboot.POS.service.StoreService;
 import com.springboot.POS.service.UserService;
@@ -25,6 +26,7 @@ public class AdminController {
     private final StoreRegistrationService registrationService;
     private final StoreService storeService;
     private final UserService userService;
+    private final AdminAuditService auditService;
 
     /**
      * Get store registration requests with optional status filter
@@ -89,6 +91,7 @@ public class AdminController {
         
         User admin = userService.getUserFromJwtToken(jwt);
         registrationService.approveRequest(id, admin.getId());
+        auditService.record(admin.getId(), "REGISTRATION_APPROVE", "registration", id, "Via /store-requests approve");
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Store registration request approved successfully. Approval email sent to applicant.");
@@ -114,6 +117,7 @@ public class AdminController {
         }
         
         registrationService.rejectRequest(id, reason, admin.getId());
+        auditService.record(admin.getId(), "REGISTRATION_REJECT", "registration", id, "Reason: " + reason);
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Store registration request rejected successfully. Rejection email sent to applicant.");
@@ -144,26 +148,5 @@ public class AdminController {
         ApiResponse response = new ApiResponse();
         response.setMessage("Store subscription plan updated successfully to " + subscriptionPlan);
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Debug endpoint to check all requests (REMOVE IN PRODUCTION)
-     */
-    @GetMapping("/store-requests/debug/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> debugGetAllRequests(@RequestHeader("Authorization") String jwt) throws Exception {
-        User admin = userService.getUserFromJwtToken(jwt);
-        List<StoreRegistrationRequestDTO> all = registrationService.getAllRequests();
-        
-        log.info("=== DEBUG: Total requests in DB: {} ===", all.size());
-        all.forEach(req -> {
-            log.info("Request ID: {}, Store: {}, Status: '{}', Email: {}, Created: {}",
-                req.getId(), req.getStoreName(), req.getStatus(), req.getEmail(), req.getCreatedAt());
-        });
-        
-        return ResponseEntity.ok(Map.of(
-            "total", all.size(),
-            "requests", all
-        ));
     }
 }

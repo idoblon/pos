@@ -5,6 +5,7 @@ import com.springboot.POS.modal.ShiftReport;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 
@@ -18,7 +19,7 @@ public class RefundDTO {
 
     private String reason;
 
-    private Double amount;
+    private BigDecimal amount;
 
     //private ShiftReport shiftReport;
 

@@ -235,6 +235,60 @@ public class InventoryServiceImpl implements InventoryService {
         return InventoryMapper.toDTO(inventory);
     }
 
+    @Override
+    @Transactional
+    public InventoryDTO transferStock(Long warehouseInventoryId, Long toBranchId, int quantity,
+                                      com.springboot.POS.modal.User performedBy) throws Exception {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Transfer quantity must be greater than zero");
+        }
+        Inventory warehouse = inventoryRepository.findById(warehouseInventoryId).orElseThrow(
+                () -> new Exception("Warehouse inventory not found"));
+        if (warehouse.getBranch() != null) {
+            throw new IllegalArgumentException("Source inventory is not a warehouse row");
+        }
+        Branch dest = branchRepository.findById(toBranchId).orElseThrow(
+                () -> new Exception("Destination branch does not exist"));
+        Long warehouseStoreId = warehouse.getStore() != null ? warehouse.getStore().getId() : null;
+        if (warehouseStoreId == null || dest.getStore() == null
+                || !warehouseStoreId.equals(dest.getStore().getId())) {
+            throw new IllegalArgumentException("Warehouse and branch belong to different stores");
+        }
+        if (warehouse.getQuantity() < quantity) {
+            throw new Exception("Insufficient warehouse stock: available=" + warehouse.getQuantity()
+                    + ", required=" + quantity);
+        }
+
+        warehouse.setQuantity(warehouse.getQuantity() - quantity);
+        inventoryRepository.save(warehouse);
+
+        inventoryRepository.upsertBranchInventory(
+                dest.getId(), warehouse.getProduct().getId(), quantity, warehouse.getUnitPrice());
+        List<Inventory> rows = inventoryRepository.findAllByProductIdAndBranchIdWithLock(
+                warehouse.getProduct().getId(), dest.getId());
+        if (rows.isEmpty()) throw new IllegalStateException("Unable to create branch inventory");
+        Inventory branchRow = rows.get(0);
+        if (rows.size() > 1) {
+            int total = rows.stream().mapToInt(Inventory::getQuantity).sum();
+            branchRow.setQuantity(total);
+            inventoryRepository.save(branchRow);
+            inventoryRepository.deleteAll(rows.subList(1, rows.size()));
+            inventoryRepository.flush();
+        }
+
+        try {
+            stockMovementService.recordMovement(warehouse.getId(),
+                    com.springboot.POS.domain.StockMovementType.TRANSFER_OUT, -quantity,
+                    "Transfer to branch " + dest.getName(), "TRANSFER", branchRow.getId(), performedBy);
+            stockMovementService.recordMovement(branchRow.getId(),
+                    com.springboot.POS.domain.StockMovementType.TRANSFER_IN, quantity,
+                    "Transfer from warehouse", "TRANSFER", warehouse.getId(), performedBy);
+        } catch (Exception e) {
+            log.warn("Failed to audit stock transfer: {}", e.getMessage());
+        }
+        return InventoryMapper.toDTO(branchRow);
+    }
+
     private void validateNonNegativeQuantity(Integer quantity) {
         if (quantity == null || quantity < 0) {
             throw new IllegalArgumentException("Inventory quantity must be zero or greater");

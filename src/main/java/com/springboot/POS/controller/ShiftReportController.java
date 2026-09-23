@@ -8,6 +8,7 @@ import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/shift-reports")
-public class shiftReportController {
+public class ShiftReportController {
 
     private final ShiftReportService shiftReportService;
     private final ShiftReportRepository shiftReportRepository;
@@ -100,6 +101,7 @@ public class shiftReportController {
     }
 
     @GetMapping("/store/{storeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<List<ShiftReportDTO>> getShiftReportByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt

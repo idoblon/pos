@@ -213,6 +213,18 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) throws Exception {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserException("User not found"));
+        User current = getCurrentUser();
+        if (current != null && current.getId().equals(user.getId())) {
+            throw new UserException("You cannot delete your own account");
+        }
+        if (user.getRole() == com.springboot.POS.domain.UserRole.ROLE_ADMIN
+                && !Boolean.TRUE.equals(user.getDeleted())) {
+            long activeAdmins = userRepository.findByRole(com.springboot.POS.domain.UserRole.ROLE_ADMIN)
+                    .stream().filter(u -> !Boolean.TRUE.equals(u.getDeleted())).count();
+            if (activeAdmins <= 1) {
+                throw new UserException("Cannot delete the last active administrator");
+            }
+        }
         user.setDeleted(true);
         userRepository.save(user);
     }

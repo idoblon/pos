@@ -3,6 +3,7 @@ package com.springboot.POS.controller;
 import com.springboot.POS.modal.SubscriptionPayment;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.service.PaymentService;
+import com.springboot.POS.service.SubscriptionPlanCatalog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -144,13 +145,8 @@ public class PaymentController {
 
     @GetMapping("/plans")
     public ResponseEntity<Map<String, Object>> getSubscriptionPlans() {
-        Map<String, Object> plans = new HashMap<>();
-        plans.put("BASIC", Map.of("name", "Basic", "price", 3500.0, "currency", "NPR"));
-        plans.put("PROFESSIONAL", Map.of("name", "Professional", "price", 7000.0, "currency", "NPR"));
-        plans.put("ENTERPRISE", Map.of("name", "Enterprise", "price", 10000.0, "currency", "NPR"));
-
         Map<String, Object> response = new HashMap<>();
-        response.put("plans", plans);
+        response.put("plans", SubscriptionPlanCatalog.asResponse());
         return ResponseEntity.ok(response);
     }
 

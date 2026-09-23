@@ -37,9 +37,12 @@ public class AdminPaymentController {
     private final UserRepository userRepository;
 
     /**
-     * Check store payment status by storeId or email — used by PaymentRequired page
+     * Admin payment status lookup. Explicit ADMIN guard (URL filter also
+     * requires it). Pre-login callers must use
+     * {@code GET /api/public/store-payment/status} instead.
      */
     @GetMapping("/store-payment/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getStorePaymentStatus(
             @RequestParam(required = false) Long storeId,
             @RequestParam(required = false) String email) {

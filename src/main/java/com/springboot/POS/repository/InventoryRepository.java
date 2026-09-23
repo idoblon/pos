@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,10 +45,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
                unit_price = VALUES(unit_price),
                last_update = NOW()
            """, nativeQuery = true)
-   void upsertBranchInventory(@Param("branchId") Long branchId,
-                              @Param("productId") Long productId,
-                              @Param("quantity") Integer quantity,
-                              @Param("unitPrice") Double unitPrice);
+    void upsertBranchInventory(@Param("branchId") Long branchId,
+                               @Param("productId") Long productId,
+                               @Param("quantity") Integer quantity,
+                               @Param("unitPrice") BigDecimal unitPrice);
 
    // Get all inventory (warehouse + branches) for a store
    @Query(value = "SELECT i.* FROM inventory i WHERE i.store_id = :storeId OR i.branch_id IN (SELECT id FROM branch WHERE store_id = :storeId)", nativeQuery = true)

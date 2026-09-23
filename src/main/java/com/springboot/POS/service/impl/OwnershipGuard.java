@@ -60,7 +60,9 @@ public class OwnershipGuard {
 
     /**
      * Throws unless the requester may act on the target user: self, ADMIN,
-     * or a store superior of a user in the same store.
+     * or a store superior (store admin/manager, branch manager) of a user in
+     * the same store. Branch cashiers may only access their own record —
+     * same-store lateral reads by cashiers are denied.
      */
     public void requireUserAccess(User requester, Long targetUserId) throws UserException {
         if (requester.getRole() == UserRole.ROLE_ADMIN) return;
@@ -79,6 +81,13 @@ public class OwnershipGuard {
             log.debug("requireUserAccess denied for role {}", requester.getRole());
             throw new ResourceAccessDeniedException("Access denied: user does not belong to your store");
         }
+        if (requester.getRole() == UserRole.ROLE_STORE_ADMIN
+                || requester.getRole() == UserRole.ROLE_STORE_MANAGER
+                || requester.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
+            return;
+        }
+        log.debug("requireUserAccess denied lateral access for role {}", requester.getRole());
+        throw new ResourceAccessDeniedException("Access denied: you may only access your own user record");
     }
 
     private Long resolveStoreId(User user) {

@@ -5,6 +5,7 @@ import com.springboot.POS.domain.PaymentType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,7 +25,8 @@ public class Refund {
 
     private String reason;
 
-    private Double amount;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal amount;
 
     @ManyToOne
     @JsonIgnore

@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -36,7 +37,7 @@ public class InventoryDTO {
     private Integer quantity;
 
     // Unit price for value calculation
-    private Double unitPrice;
+    private BigDecimal unitPrice;
 
     // Store ID (for warehouse inventory when branchId is null)
     private Long storeId;

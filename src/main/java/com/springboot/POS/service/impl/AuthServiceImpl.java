@@ -14,6 +14,7 @@ import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -36,6 +37,14 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProvider jwtProvider;
     private final CustomerUserImplementation customerUserImplementation;
 
+    /**
+     * Bootstrap gate for the very first admin. When false (default), open
+     * ROLE_ADMIN self-signup is disabled once an admin already exists.
+     * Set app.bootstrap.admin-signup=true only for initial local setup.
+     */
+    @Value("${app.bootstrap.admin-signup:false}")
+    private boolean adminSignupEnabled;
+
     @Override
     public AuthResponse signup(UserDTO userDto) throws UserException {
         if (userDto.getFullName() == null || userDto.getFullName().isBlank()) {
@@ -49,8 +58,14 @@ public class AuthServiceImpl implements AuthService {
             throw new UserException("email id already registered ! ");
         }
         
-        // Allow ROLE_ADMIN signup directly (hardcoded admin credentials)
+        // ROLE_ADMIN signup is bootstrap-only: allowed when explicitly enabled
+        // or when no admin exists yet (first-run setup). Otherwise rejected so
+        // anyone cannot self-register as admin on the open /auth/signup endpoint.
         if (userDto.getRole().equals(UserRole.ROLE_ADMIN)) {
+            boolean adminExists = !userRepository.findByRole(UserRole.ROLE_ADMIN).isEmpty();
+            if (adminExists && !adminSignupEnabled) {
+                throw new UserException("Admin registration is disabled. Contact an existing administrator.");
+            }
             // Create ROLE_ADMIN user directly without store requirements
             User newUser = new User();
             newUser.setEmail(userDto.getEmail());

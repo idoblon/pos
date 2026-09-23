@@ -20,6 +20,13 @@ public interface InventoryService {
     
     void deductStock(Long productId, Long branchId, int quantity) throws Exception;
     void addStock(Long productId, Long branchId, int quantity) throws Exception;
+    /**
+     * Atomically move stock from a warehouse row (branch == null) to a branch.
+     * Single transaction: decrement warehouse, upsert branch row, audit both
+     * movements. Replaces the frontend's old two-call distribute.
+     */
+    InventoryDTO transferStock(Long warehouseInventoryId, Long toBranchId, int quantity,
+                               com.springboot.POS.modal.User performedBy) throws Exception;
     List<InventoryDTO> getLowStockItems(Long branchId, int threshold);
     List<InventoryDTO> getLowStockItemsByStore(Long storeId, int threshold);
 }

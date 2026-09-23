@@ -33,7 +33,7 @@ The system supports a **hierarchical role model** — from platform admins down 
 | 🏢 **Branch Management** | Add and manage branches under a store |
 | 📦 **Product & Category** | Full CRUD for products (SKU, MRP, selling price, brand, image) and categories |
 | 🛒 **Orders** | Create orders with line items; filter by branch, cashier, customer, status, payment type |
-| 💳 **Payments** | Cash, eSewa, and Khalti payment types supported |
+| 💳 **Payments** | Cash, eSewa, Khalti, Card (Stripe), Bank Transfer (config-gated per store) |
 | 👥 **Customers** | Register and look up customers tied to orders |
 | 👨‍💼 **Employees** | Create store or branch employees with specific roles; update and remove |
 | 📋 **Inventory** | Track stock levels per branch |
@@ -56,19 +56,32 @@ src/main/java/com/springboot/POS/
 │   ├── JwtValidator.java        # Token validation filter
 │   └── JwtConstant.java         # JWT secret key constant
 │
-├── controller/                  # REST endpoints (14 controllers)
-│   ├── AuthController.java      # POST /auth/signup, /auth/login
+├── controller/                  # REST endpoints (27 controllers)
+│   ├── AuthController.java      # POST /auth/signup, /auth/login, /auth/refresh, password reset
 │   ├── StoreController.java     # /api/stores
 │   ├── BranchController.java    # /api/branches
 │   ├── ProductController.java   # /api/products
 │   ├── CategoryController.java  # /api/categories
-│   ├── OrderController.java     # /api/orders
-│   ├── InventoryController.java # /api/inventory
+│   ├── OrderController.java     # /api/orders (Idempotency-Key required)
+│   ├── InventoryController.java # /api/inventories
+│   ├── StockMovementController.java # /api/stock-movements
 │   ├── CustomerController.java  # /api/customers
 │   ├── EmployeeController.java  # /api/employees
 │   ├── RefundController.java    # /api/refunds
-│   ├── shiftReportController.java # /api/shift-reports
+│   ├── ShiftReportController.java # /api/shift-reports
 │   ├── AnalyticsController.java # /api/analytics
+│   ├── InventoryAnalyticsController.java # /api/analytics/inventory
+│   ├── RestockRequestController.java # /api/restock-requests
+│   ├── RestockAnalyticsController.java # /api/analytics/restock
+│   ├── StorePaymentConfigController.java # /api/payment-config
+│   ├── SubscriptionController.java # /api/stores/{id}/subscription, /api/admin/subscriptions
+│   ├── SubscriptionChangeRequestController.java # subscription change requests
+│   ├── PaymentController.java   # /api/public/payments (initiate/verify/callback/plans)
+│   ├── PublicController.java    # /api/public (registration, complete-payment)
+│   ├── RegistrationRequestController.java # /api/admin/registration-requests
+│   ├── AdminController.java     # /api/admin (store requests, subscriptions)
+│   ├── AdminPaymentController.java # /api/admin (payment status/override)
+│   ├── EmailController.java     # /api/email
 │   ├── UserController.java      # /api/users
 │   └── HomeController.java      # Health check
 │
@@ -83,7 +96,7 @@ src/main/java/com/springboot/POS/
 │
 ├── domain/                      # Enums
 │   ├── UserRole                 # ADMIN, STORE_ADMIN, STORE_MANAGER, BRANCH_MANAGER, BRANCH_CASHIER, USER
-│   ├── PaymentType              # CASH, ESEWA, KHALTI
+│   ├── PaymentType              # CASH, ESEWA, KHALTI, CARD, BANK_TRANSFER
 │   ├── OrderStatus
 │   └── StoreStatus              # PENDING, ACTIVE, ...
 │

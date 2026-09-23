@@ -3,6 +3,8 @@ package com.springboot.POS.controller;
 import com.springboot.POS.domain.StockMovementType;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StockMovementDTO;
+import com.springboot.POS.repository.InventoryRepository;
+import com.springboot.POS.repository.ProductRepository;
 import com.springboot.POS.service.StockMovementService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
@@ -22,6 +24,8 @@ public class StockMovementController {
     private final StockMovementService stockMovementService;
     private final UserService userService;
     private final OwnershipGuard ownershipGuard;
+    private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
 
     @GetMapping("/branch/{branchId}")
     public ResponseEntity<List<StockMovementDTO>> getByBranch(
@@ -51,6 +55,12 @@ public class StockMovementController {
             @PathVariable Long productId,
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
+        com.springboot.POS.modal.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+        if (product.getStore() == null || product.getStore().getId() == null) {
+            throw new IllegalArgumentException("Product has no store scope");
+        }
+        ownershipGuard.requireStoreAccess(user, product.getStore().getId());
         return ResponseEntity.ok(stockMovementService.getMovementsByProduct(productId));
     }
 
@@ -59,6 +69,15 @@ public class StockMovementController {
             @PathVariable Long inventoryId,
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
+        com.springboot.POS.modal.Inventory inventory = inventoryRepository.findById(inventoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Inventory not found"));
+        if (inventory.getBranch() != null) {
+            ownershipGuard.requireBranchAccess(user, inventory.getBranch().getId());
+        } else if (inventory.getStore() != null) {
+            ownershipGuard.requireStoreAccess(user, inventory.getStore().getId());
+        } else {
+            throw new IllegalArgumentException("Inventory has no store or branch scope");
+        }
         return ResponseEntity.ok(stockMovementService.getMovementsByInventory(inventoryId));
     }
 

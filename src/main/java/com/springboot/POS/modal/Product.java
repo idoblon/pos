@@ -3,6 +3,7 @@ package com.springboot.POS.modal;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -25,9 +26,11 @@ public class Product {
 
     private String description;
 
-    private Double mrp;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal mrp;
 
-    private Double sellingPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal sellingPrice;
 
     private String brand;
 

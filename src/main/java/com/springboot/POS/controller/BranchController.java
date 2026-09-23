@@ -9,6 +9,7 @@ import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class BranchController {
     private final OwnershipGuard ownershipGuard;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
     public ResponseEntity<BranchDTO> createBranch(
             @RequestBody BranchDTO branchDTO,
             @RequestHeader("Authorization") String jwt) throws UserException {
@@ -53,6 +55,7 @@ public class BranchController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
     public ResponseEntity<BranchDTO> updateBranch(
             @PathVariable Long id,
             @RequestBody BranchDTO branchDTO,
@@ -65,6 +68,7 @@ public class BranchController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER')")
     public ResponseEntity<ApiResponse> deleteBranchById(
             @PathVariable Long id,
             @RequestHeader("Authorization") String jwt) throws Exception {

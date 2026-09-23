@@ -83,7 +83,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0).sum();
+                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount().doubleValue() : 0.0).sum();
 
         List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
                 currentUser, shiftReport.getShiftStart(), shiftReport.getShiftEnd()
@@ -98,7 +98,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         double cashRefunds = refunds.stream()
                 .filter(r -> r.getPaymentType() == PaymentType.CASH)
-                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount().doubleValue() : 0.0).sum();
 
         double openingFloat = shiftReport.getOpeningFloat() != null ? shiftReport.getOpeningFloat() : 0.0;
         double expectedCash = openingFloat + cashSales - cashRefunds;
@@ -202,7 +202,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount().doubleValue() : 0.0).sum();
         double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;
@@ -249,7 +249,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         );
 
         double totalRefunds = refunds.stream()
-                .mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+                .mapToDouble(r -> r.getAmount() != null ? r.getAmount().doubleValue() : 0.0).sum();
         double totalSales = orders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
         int totalOrders = orders.size();
         double netSales = totalSales - totalRefunds;

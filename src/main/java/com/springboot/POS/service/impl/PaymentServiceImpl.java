@@ -6,6 +6,7 @@ import com.springboot.POS.payload.dto.PaymentStatusDTO;
 import com.springboot.POS.repository.SubscriptionPaymentRepository;
 import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.service.PaymentService;
+import com.springboot.POS.service.SubscriptionPlanCatalog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,11 +43,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${app.payment.failure-url}")
     private String failureUrl;
 
-    // Subscription plan pricing
+    @Value("${app.payment.demo-mode:false}")
+    private boolean demoMode;
+
+    // Subscription plan pricing — single source is SubscriptionPlanCatalog.
     private static final Map<String, Double> SUBSCRIPTION_PRICES = Map.of(
-        "BASIC", 3500.0,
-        "PROFESSIONAL", 7000.0,
-        "ENTERPRISE", 10000.0
+        "BASIC", SubscriptionPlanCatalog.priceOf("BASIC"),
+        "PROFESSIONAL", SubscriptionPlanCatalog.priceOf("PROFESSIONAL"),
+        "ENTERPRISE", SubscriptionPlanCatalog.priceOf("ENTERPRISE")
     );
 
     @Override
@@ -330,8 +334,17 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private boolean verifyWithPaymentGateway(String paymentMethod, String gatewayReference) {
-        // In real implementation, make API calls to verify payment
-        // For now, simulate verification (90% success rate for testing)
-        return Math.random() > 0.1;
+        // Deterministic verification. In demo mode, accept refs prefixed with
+        // "demo-" so local flows can be tested without hitting gateways.
+        // In production (demoMode=false) a gateway reference alone is NOT
+        // sufficient — real gateway status checks must succeed. Returning false
+        // here forces callers to mark the payment FAILED instead of randomly
+        // approving ~90% of payments (previous Math.random() behavior).
+        if (gatewayReference != null && gatewayReference.startsWith("demo-")) {
+            return demoMode;
+        }
+        // TODO: implement live eSewa/Khalti status API verification here and
+        // return its result. Until then, fail closed in non-demo environments.
+        return false;
     }
 }

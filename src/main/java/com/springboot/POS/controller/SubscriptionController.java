@@ -1,11 +1,15 @@
 package com.springboot.POS.controller;
 
+import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.SubscriptionDTO;
 import com.springboot.POS.payload.dto.SubscriptionNotificationDTO;
 import com.springboot.POS.payload.dto.SubscriptionStatsDTO;
 import com.springboot.POS.payload.request.SubscriptionRenewalRequest;
 import com.springboot.POS.payload.response.ApiResponse;
+import com.springboot.POS.service.SubscriptionPlanCatalog;
 import com.springboot.POS.service.SubscriptionService;
+import com.springboot.POS.service.UserService;
+import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,17 +25,46 @@ import java.util.Map;
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
+    private final UserService userService;
+    private final OwnershipGuard ownershipGuard;
+
+    private void requireStoreSubscriptionAccess(String jwt, Long storeId) throws Exception {
+        if (jwt == null || jwt.isBlank()) {
+            throw new IllegalArgumentException("Authorization header is required");
+        }
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
+    }
+
+    /**
+     * Admin plan catalog — single source of truth for plan pricing/limits.
+     * Admin UI should fetch this instead of hardcoding prices.
+     */
+    @GetMapping("/admin/plans")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getAdminPlans() {
+        return ResponseEntity.ok(Map.of("plans", SubscriptionPlanCatalog.asResponse()));
+    }
 
     // Store subscription endpoints
     @GetMapping("/stores/{storeId}/subscription")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN')")
-    public ResponseEntity<SubscriptionDTO> getStoreSubscription(@PathVariable Long storeId) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN', 'STORE_MANAGER')")
+    public ResponseEntity<SubscriptionDTO> getStoreSubscription(
+            @PathVariable Long storeId,
+            @RequestHeader(value = "Authorization", required = false) String jwt) {
+        try {
+            if (jwt != null && !jwt.isBlank()) {
+                requireStoreSubscriptionAccess(jwt, storeId);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
         SubscriptionDTO subscription = subscriptionService.getStoreSubscription(storeId);
         return ResponseEntity.ok(subscription);
     }
 
     @GetMapping("/store/subscription/current")
-    @PreAuthorize("hasRole('STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER')")
     public ResponseEntity<SubscriptionDTO> getCurrentSubscription(
             @RequestHeader("Authorization") String jwt) {
         SubscriptionDTO subscription = subscriptionService.getCurrentSubscription(jwt);
@@ -51,20 +84,36 @@ public class SubscriptionController {
     }
 
     @PostMapping("/stores/{storeId}/subscription/renew")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN', 'STORE_MANAGER')")
     public ResponseEntity<SubscriptionDTO> renewSubscription(
             @PathVariable Long storeId,
-            @RequestBody SubscriptionRenewalRequest request) {
+            @RequestBody SubscriptionRenewalRequest request,
+            @RequestHeader(value = "Authorization", required = false) String jwt) {
+        try {
+            if (jwt != null && !jwt.isBlank()) {
+                requireStoreSubscriptionAccess(jwt, storeId);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
         SubscriptionDTO subscription = subscriptionService.renewSubscription(
                 storeId, request.getPlan(), request.getPaymentDetails());
         return ResponseEntity.ok(subscription);
     }
 
     @PutMapping("/stores/{storeId}/subscription/plan")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN', 'STORE_MANAGER')")
     public ResponseEntity<SubscriptionDTO> updateSubscriptionPlan(
             @PathVariable Long storeId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "Authorization", required = false) String jwt) {
+        try {
+            if (jwt != null && !jwt.isBlank()) {
+                requireStoreSubscriptionAccess(jwt, storeId);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
         String plan = request.get("plan");
         SubscriptionDTO subscription = subscriptionService.updateSubscriptionPlan(storeId, plan);
         return ResponseEntity.ok(subscription);
@@ -127,9 +176,17 @@ public class SubscriptionController {
 
     // Notification endpoints
     @GetMapping("/stores/{storeId}/subscription/notifications")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STORE_ADMIN', 'STORE_MANAGER')")
     public ResponseEntity<List<SubscriptionNotificationDTO>> getSubscriptionNotifications(
-            @PathVariable Long storeId) {
+            @PathVariable Long storeId,
+            @RequestHeader(value = "Authorization", required = false) String jwt) {
+        try {
+            if (jwt != null && !jwt.isBlank()) {
+                requireStoreSubscriptionAccess(jwt, storeId);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
         List<SubscriptionNotificationDTO> notifications =
                 subscriptionService.getSubscriptionNotifications(storeId);
         return ResponseEntity.ok(notifications);

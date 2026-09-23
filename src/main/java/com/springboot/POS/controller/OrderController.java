@@ -14,6 +14,7 @@ import com.springboot.POS.util.QueryLimits;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,7 +32,12 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(
             @RequestBody OrderDTO order,
-            @RequestHeader("Idempotency-Key") String idempotencyKey) throws Exception {
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User caller = userService.getUserFromJwtToken(jwt);
+        if (order.getBranchId() != null) {
+            ownershipGuard.requireBranchAccess(caller, order.getBranchId());
+        }
         try {
             return ResponseEntity.ok(orderService.createOrder(order, idempotencyKey));
         } catch (DataIntegrityViolationException ex) {
@@ -50,6 +56,10 @@ public class OrderController {
         List<OrderDTO> orders;
         if (user.getRole() == UserRole.ROLE_ADMIN) {
             orders = orderService.getAllOrders(limit);
+        } else if (user.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            // Cashiers see only their own orders here; branch/store views
+            // have dedicated guarded endpoints.
+            orders = orderService.getOrderByCashier(user.getId());
         } else {
             Long storeId = ownershipGuard.resolveStoreIdOf(user);
             if (storeId != null) {
@@ -65,22 +75,53 @@ public class OrderController {
     }
 
     @PostMapping("/held")
-    public ResponseEntity<OrderDTO> holdOrder(@RequestBody OrderDTO order) throws Exception {
+    public ResponseEntity<OrderDTO> holdOrder(
+            @RequestBody OrderDTO order,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User caller = userService.getUserFromJwtToken(jwt);
+        if (order.getBranchId() != null) {
+            ownershipGuard.requireBranchAccess(caller, order.getBranchId());
+        }
         return ResponseEntity.ok(orderService.holdOrder(order));
     }
 
     @GetMapping("/held")
-    public ResponseEntity<List<OrderDTO>> getHeldOrders() throws Exception {
-        return ResponseEntity.ok(orderService.getHeldOrders());
+    public ResponseEntity<List<OrderDTO>> getHeldOrders(
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User caller = userService.getUserFromJwtToken(jwt);
+        List<OrderDTO> held = orderService.getHeldOrders();
+        // Branch-scoped roles only see their own branch's held orders.
+        Long callerBranch = caller.getBranch() != null ? caller.getBranch().getId() : null;
+        if (callerBranch != null && caller.getRole() != UserRole.ROLE_ADMIN) {
+            Long pinned = callerBranch;
+            held = held.stream()
+                    .filter(o -> o.getBranchId() == null || pinned.equals(o.getBranchId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        return ResponseEntity.ok(held);
     }
 
     @PostMapping("/{id}/resume")
-    public ResponseEntity<OrderDTO> resumeHeldOrder(@PathVariable Long id) throws Exception {
+    public ResponseEntity<OrderDTO> resumeHeldOrder(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User caller = userService.getUserFromJwtToken(jwt);
+        OrderDTO held = orderService.getOrderById(id);
+        if (held.getBranchId() != null) {
+            ownershipGuard.requireBranchAccess(caller, held.getBranchId());
+        }
         return ResponseEntity.ok(orderService.resumeHeldOrder(id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> discardHeldOrder(@PathVariable Long id) throws Exception {
+    public ResponseEntity<Void> discardHeldOrder(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User caller = userService.getUserFromJwtToken(jwt);
+        OrderDTO held = orderService.getOrderById(id);
+        if (held.getBranchId() != null) {
+            ownershipGuard.requireBranchAccess(caller, held.getBranchId());
+        }
         orderService.discardHeldOrder(id);
         return ResponseEntity.noContent().build();
     }
@@ -127,6 +168,7 @@ public class OrderController {
     }
 
     @GetMapping("/store/{storeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<List<OrderDTO>> getOrdersByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {
@@ -145,6 +187,7 @@ public class OrderController {
     }
 
     @GetMapping("/monthly/store/{storeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<List<OrderDTO>> getMonthlyOrdersByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {

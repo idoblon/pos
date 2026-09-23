@@ -112,8 +112,38 @@ public class PublicController {
         }
     }
 
-    @PostMapping("/complete-payment")
-    public ResponseEntity<ApiResponse> completePayment(@RequestBody PaymentCompletionRequest req) {
+    /**
+     * Public payment status check for the pre-login PaymentRequired page.
+     * PermitAll via SecurityConfig (/api/public/**). Minimal response on
+     * purpose: status + plan + storeName only, keyed by the caller's own
+     * email (no store enumeration, no credential disclosure).
+     */
+    @GetMapping("/store-payment/status")
+    public ResponseEntity<?> publicStorePaymentStatus(
+            @RequestParam(required = false) String email) {
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "NOT_FOUND", "message", "Email is required."));
+        }
+        var reg = storeRegistrationRequestRepository.findByEmail(email.trim()).orElse(null);
+        if (reg == null) {
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "NOT_FOUND", "message", "No registration found."));
+        }
+        boolean active = userRepository.findByEmail(reg.getEmail())
+                .map(u -> "active".equalsIgnoreCase(u.getStatus())).orElse(false);
+        if (active) {
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "PAID", "message", "Payment completed."));
+        }
+        return ResponseEntity.ok(java.util.Map.of(
+                "status", "PENDING",
+                "message", "Payment pending.",
+                "plan", reg.getSubscriptionPlan() != null ? reg.getSubscriptionPlan() : "BASIC",
+                "storeName", reg.getStoreName() != null ? reg.getStoreName() : ""));
+    }
+
+    @PostMapping("/complete-payment")    public ResponseEntity<ApiResponse> completePayment(@RequestBody PaymentCompletionRequest req) {
         try {
             StoreRegistrationRequest registration = storeRegistrationRequestRepository.findByEmail(req.getEmail()).orElse(null);
             if (registration == null) {

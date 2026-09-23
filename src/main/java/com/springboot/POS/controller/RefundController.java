@@ -99,6 +99,7 @@ public class RefundController {
     }
 
     @GetMapping("/store/{storeId}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<List<RefundDTO>> getRefundsByStore(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt
@@ -126,6 +127,7 @@ public class RefundController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRefund(
             @PathVariable Long id,
             @RequestHeader("Authorization") String jwt) throws Exception {

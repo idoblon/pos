@@ -245,7 +245,7 @@ public class AnalyticsController {
                     .collect(Collectors.toList());
 
             double totalSales = empOrders.stream().mapToDouble(o -> o.getTotalAmount().doubleValue()).sum();
-            double totalRefunds = empRefunds.stream().mapToDouble(r -> r.getAmount() != null ? r.getAmount() : 0.0).sum();
+            double totalRefunds = empRefunds.stream().mapToDouble(r -> r.getAmount() != null ? r.getAmount().doubleValue() : 0.0).sum();
             long totalShifts = empShifts.size();
             long activeShifts = empShifts.stream().filter(s -> s.getShiftEnd() == null).count();
 

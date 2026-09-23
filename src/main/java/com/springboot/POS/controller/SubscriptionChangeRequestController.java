@@ -4,6 +4,7 @@ import com.springboot.POS.modal.SubscriptionChangeRequest;
 import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.repository.SubscriptionChangeRequestRepository;
+import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.SubscriptionChangeRequestService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ public class SubscriptionChangeRequestController {
     private final SubscriptionChangeRequestService changeRequestService;
     private final UserService userService;
     private final SubscriptionChangeRequestRepository changeRequestRepository;
+    private final AdminAuditService auditService;
+    private final com.springboot.POS.service.impl.OwnershipGuard ownershipGuard;
 
     /**
      * Admin marks an upgrade/downgrade request's payment as received
@@ -34,7 +37,8 @@ public class SubscriptionChangeRequestController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> markChangeRequestPaid(
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body) throws Exception {
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestHeader("Authorization") String jwt) throws Exception {
         SubscriptionChangeRequest request = changeRequestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Subscription change request not found"));
         String reference = body != null ? body.get("reference") : null;
@@ -44,6 +48,8 @@ public class SubscriptionChangeRequestController {
         request.setStatus("PAID");
         request.setPaidAt(LocalDateTime.now());
         SubscriptionChangeRequest saved = changeRequestRepository.save(request);
+        auditService.record(userService.getUserFromJwtToken(jwt).getId(),
+                "SUBSCRIPTION_MARK_PAID", "subscriptionChange", id, "Reference: " + reference);
         log.info("Admin marked subscription change request {} as paid", id);
         return ResponseEntity.ok(saved);
     }
@@ -63,12 +69,13 @@ public class SubscriptionChangeRequestController {
     }
     
     @GetMapping("/subscription-upgrade-requests/store/{storeId}")
-    @PreAuthorize("hasRole('STORE_ADMIN')")
+    @PreAuthorize("hasAnyRole('STORE_ADMIN', 'STORE_MANAGER')")
     public ResponseEntity<List<SubscriptionChangeRequest>> getStoreRequests(
             @PathVariable Long storeId,
             @RequestHeader("Authorization") String jwt) throws Exception {
         
         User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, storeId);
         log.info("Store admin {} fetching change requests for store {}", user.getId(), storeId);
         
         List<SubscriptionChangeRequest> requests = changeRequestService.getRequestsByStoreId(storeId);
@@ -91,6 +98,34 @@ public class SubscriptionChangeRequestController {
         
         return ResponseEntity.ok(requests);
     }
+
+    /**
+     * Backward-compat alias: older admin UI builds call
+     * {@code /api/admin/subscription-upgrade-requests}. Canonical path is
+     * {@code /api/admin/subscription-change-requests}.
+     * @deprecated use {@code GET /api/admin/subscription-change-requests}
+     */
+    @Deprecated
+    @GetMapping("/admin/subscription-upgrade-requests")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<SubscriptionChangeRequest>> getAllChangeRequestsAlias(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        return getAllChangeRequests(status, jwt);
+    }
+
+    /**
+     * Backward-compat alias for approve.
+     * @deprecated use {@code POST /api/admin/subscription-change-requests/{id}/approve}
+     */
+    @Deprecated
+    @PostMapping("/admin/subscription-upgrade-requests/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse> approveChangeRequestAlias(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        return approveChangeRequest(id, jwt);
+    }
     
     @PostMapping("/admin/subscription-change-requests/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
@@ -102,6 +137,7 @@ public class SubscriptionChangeRequestController {
         log.info("POS Admin {} approving subscription change request {}", admin.getId(), id);
         
         changeRequestService.approveRequest(id, admin.getId());
+        auditService.record(admin.getId(), "SUBSCRIPTION_APPROVE", "subscriptionChange", id, null);
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Subscription change request approved and store plan updated successfully");
@@ -126,6 +162,8 @@ public class SubscriptionChangeRequestController {
             admin.getId(), id, reason);
         
         changeRequestService.rejectRequest(id, reason, admin.getId());
+        auditService.record(admin.getId(), "SUBSCRIPTION_REJECT", "subscriptionChange", id,
+                "Reason: " + reason);
         
         ApiResponse response = new ApiResponse();
         response.setMessage("Subscription change request rejected");

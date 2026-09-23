@@ -39,17 +39,19 @@ public class RefundServiceImpl implements RefundService {
         );
 
         // Validate refund amount
-        if (refund.getAmount() == null || refund.getAmount() <= 0) {
+        if (refund.getAmount() == null || refund.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new Exception("Refund amount must be greater than zero");
         }
-        if (BigDecimal.valueOf(refund.getAmount()).compareTo(order.getTotalAmount()) > 0) {
+        if (refund.getAmount().compareTo(order.getTotalAmount()) > 0) {
             throw new Exception("Refund amount (" + refund.getAmount() + ") cannot exceed order total (" + order.getTotalAmount() + ")");
         }
 
         // Check if order was already fully refunded
         List<Refund> existingRefunds = refundRepository.findByOrderId(order.getId());
-        double totalRefunded = existingRefunds.stream().mapToDouble(Refund::getAmount).sum();
-        if (totalRefunded + refund.getAmount() > order.getTotalAmount().doubleValue()) {
+        BigDecimal totalRefunded = existingRefunds.stream()
+                .map(r -> r.getAmount() != null ? r.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalRefunded.add(refund.getAmount()).compareTo(order.getTotalAmount()) > 0) {
             throw new Exception("Total refunds would exceed order amount. Already refunded: " + totalRefunded);
         }
 

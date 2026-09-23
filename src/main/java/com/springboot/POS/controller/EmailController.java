@@ -19,6 +19,7 @@ public class EmailController {
     private final EmailService emailService;
 
     @PostMapping("/account-created")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse> sendAccountCreatedEmail(@RequestBody EmailRequest request) {
         emailService.sendAccountCreatedEmail(request);
         ApiResponse response = new ApiResponse();
@@ -27,6 +28,7 @@ public class EmailController {
     }
 
     @PostMapping("/welcome")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse> sendWelcomeEmail(@RequestBody EmailRequest request) {
         emailService.sendWelcomeEmail(request);
         ApiResponse response = new ApiResponse();
@@ -35,6 +37,7 @@ public class EmailController {
     }
 
     @PostMapping("/password-reset")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse> sendPasswordResetEmail(@RequestBody EmailRequest request) {
         emailService.sendPasswordResetEmail(request);
         ApiResponse response = new ApiResponse();
@@ -81,7 +84,7 @@ public class EmailController {
     }
 
     @PostMapping("/store-credentials")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_ADMIN','STORE_MANAGER','BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse> sendStoreCredentialsEmail(@RequestBody EmailRequest request) {
         emailService.sendStoreRegistrationApproved(
             request.getTo(),

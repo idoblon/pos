@@ -337,10 +337,10 @@ public class OrderServiceImpl implements OrderService {
             if (Boolean.TRUE.equals(product.getDeleted())) {
                 throw new EntityNotFoundException("Product no longer available: " + product.getName());
             }
-            if (product.getSellingPrice() == null || product.getSellingPrice() < 0) {
+            if (product.getSellingPrice() == null || product.getSellingPrice().compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalStateException("Product has an invalid selling price: " + product.getId());
             }
-            BigDecimal unitPrice = BigDecimal.valueOf(product.getSellingPrice())
+            BigDecimal unitPrice = product.getSellingPrice()
                     .setScale(2, RoundingMode.HALF_UP);
             return OrderItem.builder().product(product).quantity(entry.getValue()).unitPrice(unitPrice)
                     .price(unitPrice.multiply(BigDecimal.valueOf(entry.getValue()))
