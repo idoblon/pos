@@ -41,7 +41,7 @@ public class AdminSettingsController {
     @PutMapping
     public ResponseEntity<Map<String, String>> save(
             @RequestBody Map<String, String> settings,
-            @RequestHeader("Authorization") String jwt) {
+            @RequestHeader("Authorization") String jwt) throws Exception {
         User admin = userService.getUserFromJwtToken(jwt);
         Map<String, String> saved = new LinkedHashMap<>();
         settings.forEach((key, value) -> {
