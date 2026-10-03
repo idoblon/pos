@@ -22,4 +22,9 @@ public interface EmailService {
     void sendStoreRegistrationApprovalNotification(String applicantEmail, String ownerName, String storeName, String subscriptionPlan);
     void sendStoreRegistrationApproved(String applicantEmail, String ownerName, String storeName, String loginEmail);
     void sendStoreRegistrationRejected(String applicantEmail, String ownerName, String storeName, String rejectionReason);
+
+    // Free-trial emails
+    void sendTrialStartedEmail(String applicantEmail, String ownerName, String storeName, String loginEmail, String trialEndsAt);
+    void sendTrialExpiringEmail(String applicantEmail, String ownerName, String storeName, long daysRemaining);
+    void sendTrialExpiredEmail(String applicantEmail, String ownerName, String storeName);
 }

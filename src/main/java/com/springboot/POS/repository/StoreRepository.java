@@ -4,6 +4,7 @@ import com.springboot.POS.modal.Store;
 import com.springboot.POS.modal.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
@@ -11,5 +12,7 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     Store findByStoreAdminId(Long adminId);
 
     Optional<Store> findByStoreAdmin(User storeAdmin);
+
+    List<Store> findByTrialStatus(String trialStatus);
 
 }

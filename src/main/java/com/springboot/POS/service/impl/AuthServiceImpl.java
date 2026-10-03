@@ -196,6 +196,22 @@ public class AuthServiceImpl implements AuthService {
             throw new UserException("Your store registration has been approved. Please complete the subscription payment before logging in.");
         }
 
+        // Block login when the free trial lapsed without conversion
+        if (user.getStore() != null && user.getStore().getId() != null) {
+            com.springboot.POS.modal.Store loginStore = storeRepository
+                    .findById(user.getStore().getId()).orElse(null);
+            if (loginStore != null) {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                boolean trialPastDue = "TRIAL".equals(loginStore.getTrialStatus())
+                        && loginStore.getTrialEndsAt() != null
+                        && !loginStore.getTrialEndsAt().isAfter(now);
+                // EXPIRED is only ever set by the trial-expiry job for lapsed trials.
+                if (trialPastDue || "EXPIRED".equals(loginStore.getTrialStatus())) {
+                    throw new UserException("Your 14-day free trial has ended. Please upgrade your subscription to continue using POS Pro.");
+                }
+            }
+        }
+
         //  BUILD RESPONSE WITH STORE INFO
         AuthResponse authResponse = new AuthResponse();
         authResponse.setJwt(jwt);

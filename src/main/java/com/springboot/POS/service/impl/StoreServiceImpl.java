@@ -13,6 +13,7 @@ import com.springboot.POS.repository.StoreRegistrationRequestRepository;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.StoreService;
+import com.springboot.POS.service.TrialService;
 import com.springboot.POS.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class StoreServiceImpl implements StoreService {
     private final StoreRegistrationRequestRepository registrationRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final TrialService trialService;
 
     @Override
     public StoreDTO createStore(StoreDTO storeDTO, User user) {
@@ -340,9 +342,12 @@ public class StoreServiceImpl implements StoreService {
     public void updateSubscriptionPlan(Long storeId, String subscriptionPlan) throws Exception {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new Exception("Store not found with id: " + storeId));
-        
+
         store.setSubscriptionPlan(subscriptionPlan);
         storeRepository.save(store);
+
+        // A paid plan landing on a trialing store converts the trial.
+        trialService.convertTrial(storeId, subscriptionPlan);
     }
 
     @Override

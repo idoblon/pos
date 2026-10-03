@@ -48,6 +48,21 @@ public class Store {
     
     @Column(name = "last_subscription_renewal")
     private LocalDateTime lastSubscriptionRenewal;
+
+    // Trial subscription (self-serve "Start free trial" onboarding).
+    // NONE = never trialed, TRIAL = inside trial window,
+    // CONVERTED = paid after trial, EXPIRED = trial lapsed unpaid.
+    @Column(name = "trial_status")
+    private String trialStatus = "NONE";
+
+    @Column(name = "trial_started_at")
+    private LocalDateTime trialStartedAt;
+
+    @Column(name = "trial_ends_at")
+    private LocalDateTime trialEndsAt;
+
+    @Column(name = "trial_converted_at")
+    private LocalDateTime convertedAt;
     
     @Column(name = "estimated_branches")
     private Integer estimatedBranches;
@@ -131,6 +146,9 @@ public class Store {
         }
         if (subscriptionRenewalCount == null) {
             subscriptionRenewalCount = 0;
+        }
+        if (trialStatus == null || trialStatus.trim().isEmpty()) {
+            trialStatus = "NONE";
         }
     }
 

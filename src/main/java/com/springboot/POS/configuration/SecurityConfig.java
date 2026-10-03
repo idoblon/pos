@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/super-admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/public/**").permitAll()  // Public endpoints like store registration
-                        .requestMatchers("/auth/signup", "/auth/login", "/auth/forgot-password", "/auth/reset-password", "/auth/refresh").permitAll()
+                        .requestMatchers("/auth/signup", "/auth/login", "/auth/forgot-password", "/auth/reset-password", "/auth/refresh", "/auth/trial-signup").permitAll()
                         .requestMatchers("/", "/error").permitAll()
                         .requestMatchers("/api/restock-requests/**").authenticated()
                         .requestMatchers("/api/**").authenticated()

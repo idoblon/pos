@@ -314,4 +314,63 @@ public class EmailServiceImpl implements EmailService {
         message.setFrom("posproofficial@gmail.com");
         mailSender.send(message);
     }
+
+    @Async
+    @Override
+    public void sendTrialStartedEmail(String applicantEmail, String ownerName, String storeName, String loginEmail, String trialEndsAt) {
+        String loginLink = frontendUrl + "/login";
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Your 14-day free trial has started - " + storeName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your 14-day free trial for '%s' is now active (ends %s)!\n\n" +
+            "Login Credentials (use the password you set during trial signup):\n" +
+            "Email: %s\n\n" +
+            "Login here: %s\n\n" +
+            "Add a branch, add products, and record your first sale to explore everything. " +
+            "Upgrade anytime before the trial ends to keep your store running without interruption.\n\n" +
+            "Best regards,\nPOS Pro Team",
+            ownerName, storeName, trialEndsAt, loginEmail, loginLink
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Async
+    @Override
+    public void sendTrialExpiringEmail(String applicantEmail, String ownerName, String storeName, long daysRemaining) {
+        String loginLink = frontendUrl + "/login";
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Your free trial ends in " + daysRemaining + " days - " + storeName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your free trial for '%s' ends in %d %s. Upgrade now to keep selling without interruption.\n\n" +
+            "Login here: %s\n\n" +
+            "Best regards,\nPOS Pro Team",
+            ownerName, storeName, daysRemaining, daysRemaining == 1 ? "day" : "days", loginLink
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
+
+    @Async
+    @Override
+    public void sendTrialExpiredEmail(String applicantEmail, String ownerName, String storeName) {
+        String loginLink = frontendUrl + "/login";
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(applicantEmail);
+        message.setSubject("Your free trial has ended - " + storeName);
+        message.setText(String.format(
+            "Hello %s,\n\n" +
+            "Your 14-day free trial for '%s' has ended and the store is paused. " +
+            "Your data is safe — upgrade your subscription to resume selling.\n\n" +
+            "Login here: %s\n\n" +
+            "Best regards,\nPOS Pro Team",
+            ownerName, storeName, loginLink
+        ));
+        message.setFrom("posproofficial@gmail.com");
+        mailSender.send(message);
+    }
 }

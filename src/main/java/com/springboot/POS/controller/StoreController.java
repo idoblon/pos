@@ -12,6 +12,7 @@ import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.StoreService;
+import com.springboot.POS.service.TrialService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
+    private final TrialService trialService;
     private final UserService userService;
     private final OwnershipGuard ownershipGuard;
     private final AdminAuditService auditService;
@@ -92,6 +94,13 @@ public class StoreController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         return ResponseEntity.ok(storeService.getStoreByEmployee());
+    }
+
+    @GetMapping("/trial-status")
+    public ResponseEntity<java.util.Map<String, Object>> getTrialStatus(
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        return ResponseEntity.ok(trialService.getTrialStatus(user));
     }
 
     @PutMapping("/{id}")

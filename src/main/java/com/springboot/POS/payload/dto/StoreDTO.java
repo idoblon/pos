@@ -43,4 +43,10 @@ public class StoreDTO {
     private LocalDateTime approvedAt;
     private Long registrationRequestId;
 
+    // Trial state (admin visibility)
+    private String trialStatus;
+    private LocalDateTime trialStartedAt;
+    private LocalDateTime trialEndsAt;
+    private LocalDateTime convertedAt;
+
 }

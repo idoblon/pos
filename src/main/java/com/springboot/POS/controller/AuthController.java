@@ -5,6 +5,7 @@ import com.springboot.POS.payload.dto.UserDTO;
 import com.springboot.POS.payload.response.AuthResponse;
 import com.springboot.POS.service.AuthService;
 import com.springboot.POS.service.PasswordResetService;
+import com.springboot.POS.service.TrialService;
 import com.springboot.POS.payload.dto.ForgotPasswordRequest;
 import com.springboot.POS.payload.dto.ResetPasswordRequest;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ import java.util.Map;
 public class AuthController {
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final TrialService trialService;
 
 //    http://localhost:8080/auth/singup
 
@@ -42,6 +44,16 @@ public class AuthController {
     ) throws UserException {
         return ResponseEntity.ok(
                 authService.login(userDto)
+        );
+
+    }
+
+    @PostMapping("/trial-signup")
+    public ResponseEntity<AuthResponse> trialSignupHandler(
+            @RequestBody @Valid UserDTO userDto
+    ) throws UserException {
+        return ResponseEntity.ok(
+                trialService.startTrial(userDto)
         );
 
     }

@@ -47,6 +47,10 @@ public class StoreMapper {
         storeDTO.setTotalRevenue(store.getTotalRevenue());
         storeDTO.setApprovedAt(store.getApprovedAt());
         storeDTO.setRegistrationRequestId(store.getRegistrationRequestId());
+        storeDTO.setTrialStatus(store.getTrialStatus());
+        storeDTO.setTrialStartedAt(store.getTrialStartedAt());
+        storeDTO.setTrialEndsAt(store.getTrialEndsAt());
+        storeDTO.setConvertedAt(store.getConvertedAt());
         return storeDTO;
     }
 

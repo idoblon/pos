@@ -114,12 +114,14 @@ public class AdminPaymentLedgerController {
         row.put("paymentGatewayReference", payment.getPaymentGatewayReference());
         row.put("createdAt", payment.getCreatedAt());
         row.put("paidAt", payment.getPaidAt());
-        registrationRepository.findById(payment.getRegistrationRequestId()).ifPresent(reg -> {
-            row.put("storeName", reg.getStoreName());
-            row.put("ownerName", reg.getOwnerName());
-            row.put("email", reg.getEmail());
-            row.put("registrationStatus", reg.getStatus());
-        });
+        if (payment.getRegistrationRequestId() != null) {
+            registrationRepository.findById(payment.getRegistrationRequestId()).ifPresent(reg -> {
+                row.put("storeName", reg.getStoreName());
+                row.put("ownerName", reg.getOwnerName());
+                row.put("email", reg.getEmail());
+                row.put("registrationStatus", reg.getStatus());
+            });
+        }
         return row;
     }
 }
