@@ -316,11 +316,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     }
 
     private List<Product> getTopSellingProducts(List<Order> orders) {
-        Map<Product, Integer> productSalesMap = new HashMap<>();
+        Map<Product, Double> productSalesMap = new HashMap<>();
         for (Order order : orders) {
             for (OrderItem item : order.getItems()) {
                 Product product = item.getProduct();
-                productSalesMap.put(product, productSalesMap.getOrDefault(product, 0) + item.getQuantity());
+                productSalesMap.put(product, productSalesMap.getOrDefault(product, 0.0) + item.getQuantity().doubleValue());
             }
         }
         return productSalesMap.entrySet().stream()

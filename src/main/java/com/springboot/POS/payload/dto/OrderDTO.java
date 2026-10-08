@@ -38,6 +38,17 @@ public class OrderDTO {
     private OrderStatus status;
     private List<OrderItemDTO> items;
 
+    // ── Vertical store-type context (all optional) ──
+    /** Restaurant: DINE_IN, TAKEAWAY or DELIVERY. */
+    private String orderType;
+    private String tableNumber;
+    /** Free-text note for the kitchen (KOT). */
+    private String kitchenNote;
+    /** Pharmacy: pharmacist sign-off on attached prescription. */
+    private Boolean prescriptionVerified;
+    /** Electronics: EMI tenure in months, null = full payment. */
+    private Integer emiMonths;
+
     // Resolve paymentType from either paymentType or paymentMethod string
     public PaymentType getPaymentType() {
         if (paymentType != null) return paymentType;

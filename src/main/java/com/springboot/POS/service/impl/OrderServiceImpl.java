@@ -5,6 +5,7 @@ import com.springboot.POS.domain.PaymentType;
 import com.springboot.POS.mapper.OrderMapper;
 import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.OrderDTO;
+import com.springboot.POS.payload.dto.OrderItemDTO;
 import com.springboot.POS.repository.CustomerRepository;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.ProductRepository;
@@ -14,6 +15,8 @@ import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.OrderPaymentService;
 import com.springboot.POS.service.OrderService;
 import com.springboot.POS.service.UserService;
+import com.springboot.POS.util.BulkPricing;
+import com.springboot.POS.util.JsonLists;
 import com.springboot.POS.util.OrderTotals;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -84,6 +88,17 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems = buildOrderItems(orderDTO);
 
+        // Pharmacy guardrails: prescription items need a recorded customer,
+        // controlled substances need pharmacist sign-off — before any payment.
+        if (orderItems.stream().anyMatch(item -> Boolean.TRUE.equals(item.getProduct().getPrescriptionRequired()))
+                && orderDTO.getCustomerId() == null) {
+            throw new Exception("Prescription items require a customer on the order");
+        }
+        if (orderItems.stream().anyMatch(item -> Boolean.TRUE.equals(item.getProduct().getControlledSubstance()))
+                && !Boolean.TRUE.equals(orderDTO.getPrescriptionVerified())) {
+            throw new Exception("Controlled substances require pharmacist verification");
+        }
+
         BigDecimal subtotal = orderItems.stream()
                 .map(OrderItem::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -126,6 +141,11 @@ public class OrderServiceImpl implements OrderService {
                 .discountType(orderDTO.getDiscountType())
                 .note(orderDTO.getNote())
                 .idempotencyKey(scopedIdempotencyKey)
+                .orderType(normalizeOrderType(orderDTO.getOrderType()))
+                .tableNumber(blankToNull(orderDTO.getTableNumber()))
+                .kitchenNote(blankToNull(orderDTO.getKitchenNote()))
+                .prescriptionVerified(Boolean.TRUE.equals(orderDTO.getPrescriptionVerified()))
+                .emiMonths(validateEmiMonths(orderDTO.getEmiMonths()))
                 .status(OrderStatus.COMPLETED)
                 .build();
 
@@ -133,7 +153,8 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(orderItems);
 
         for (OrderItem item : orderItems) {
-            inventoryService.deductStock(item.getProduct().getId(), branch.getId(), item.getQuantity());
+            inventoryService.deductStock(item.getProduct().getId(), branch.getId(),
+                    OrderTotals.stockUnits(item.getQuantity()));
         }
 
         Order savedOrder = orderRepository.save(order);
@@ -187,6 +208,11 @@ public class OrderServiceImpl implements OrderService {
                 .discount(orderDTO.getDiscount())
                 .discountType(orderDTO.getDiscountType())
                 .note(orderDTO.getNote())
+                .orderType(normalizeOrderType(orderDTO.getOrderType()))
+                .tableNumber(blankToNull(orderDTO.getTableNumber()))
+                .kitchenNote(blankToNull(orderDTO.getKitchenNote()))
+                .prescriptionVerified(Boolean.TRUE.equals(orderDTO.getPrescriptionVerified()))
+                .emiMonths(validateEmiMonths(orderDTO.getEmiMonths()))
                 .status(OrderStatus.HELD)
                 .build();
         orderItems.forEach(item -> item.setOrder(heldOrder));
@@ -313,40 +339,153 @@ public class OrderServiceImpl implements OrderService {
                 .stream().map(OrderMapper::toDTO).collect(Collectors.toList());
     }
 
+    /**
+     * Builds priced order lines from the request. Lines carrying distinguishing
+     * attributes (modifiers, kitchen note, dosage, serials) are kept separate
+     * so per-line detail survives; plain lines of the same product share the
+     * bulk tier reached by the product's total quantity.
+     *
+     * Enforced here (both new sales and held orders): products exist and are
+     * not deleted, quantities are positive, expired goods are rejected, MOQ is
+     * met per product, and serialized goods carry one unique serial per unit.
+     */
     private List<OrderItem> buildOrderItems(OrderDTO orderDTO) {
-        Map<Long, Integer> quantitiesByProduct = new TreeMap<>();
         if (orderDTO.getItems() == null || orderDTO.getItems().isEmpty()) {
             throw new IllegalArgumentException("An order must contain at least one item");
         }
-        orderDTO.getItems().forEach(itemDTO -> {
+        List<ResolvedLine> lines = new ArrayList<>();
+        Map<Long, BigDecimal> totalsByProduct = new TreeMap<>();
+        for (OrderItemDTO itemDTO : orderDTO.getItems()) {
             if (itemDTO == null || itemDTO.getProductId() == null) {
                 throw new IllegalArgumentException("Every order item must include a product");
             }
-            if (itemDTO.getQuantity() == null || itemDTO.getQuantity() <= 0) {
+            if (itemDTO.getQuantity() == null || itemDTO.getQuantity().signum() <= 0) {
                 throw new IllegalArgumentException("Order item quantity must be greater than zero");
             }
+            BigDecimal qty;
             try {
-                quantitiesByProduct.merge(itemDTO.getProductId(), itemDTO.getQuantity(), Math::addExact);
+                qty = itemDTO.getQuantity().stripTrailingZeros();
             } catch (ArithmeticException ex) {
                 throw new IllegalArgumentException("Order item quantity is too large", ex);
             }
-        });
-        return quantitiesByProduct.entrySet().stream().map(entry -> {
-            Product product = productRepository.findById(entry.getKey())
-                    .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + entry.getKey()));
+            Product product = productRepository.findById(itemDTO.getProductId())
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found: id=" + itemDTO.getProductId()));
             if (Boolean.TRUE.equals(product.getDeleted())) {
                 throw new EntityNotFoundException("Product no longer available: " + product.getName());
+            }
+            if (product.getExpiryDate() != null && !product.getExpiryDate().isAfter(java.time.LocalDate.now())) {
+                throw new IllegalArgumentException("Product expired and cannot be sold: " + product.getName());
             }
             if (product.getSellingPrice() == null || product.getSellingPrice().compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalStateException("Product has an invalid selling price: " + product.getId());
             }
-            BigDecimal unitPrice = product.getSellingPrice()
-                    .setScale(2, RoundingMode.HALF_UP);
-            return OrderItem.builder().product(product).quantity(entry.getValue()).unitPrice(unitPrice)
-                    .price(unitPrice.multiply(BigDecimal.valueOf(entry.getValue()))
-                            .setScale(2, RoundingMode.HALF_UP))
+            List<String> modifiers = cleanStrings(itemDTO.getModifiers());
+            List<String> serials = cleanStrings(itemDTO.getSerials());
+            lines.add(new ResolvedLine(product, qty, modifiers,
+                    blankToNull(itemDTO.getKitchenNote()), blankToNull(itemDTO.getDosage()), serials));
+            totalsByProduct.merge(product.getId(), qty, BigDecimal::add);
+        }
+        // MOQ is measured against the product's total across all lines.
+        for (ResolvedLine line : lines) {
+            Integer moq = line.product.getMoq();
+            if (moq != null && moq > 1
+                    && totalsByProduct.getOrDefault(line.product.getId(), BigDecimal.ZERO)
+                            .compareTo(BigDecimal.valueOf(moq)) < 0) {
+                throw new IllegalArgumentException(
+                        "Minimum order quantity of " + moq + " not met for: " + line.product.getName());
+            }
+        }
+        // Serials: one unique non-blank serial per whole unit, per product.
+        Map<Long, java.util.Set<String>> seenSerials = new java.util.HashMap<>();
+        for (ResolvedLine line : lines) {
+            if (Boolean.TRUE.equals(line.product.getRequiresSerial())) {
+                int units;
+                try {
+                    units = line.qty.intValueExact();
+                } catch (ArithmeticException ex) {
+                    throw new IllegalArgumentException(
+                            "Serialized product requires a whole-unit quantity: " + line.product.getName());
+                }
+                if (line.serials.size() != units) {
+                    throw new IllegalArgumentException(
+                            "One unique serial per unit is required for: " + line.product.getName());
+                }
+                java.util.Set<String> seen = seenSerials.computeIfAbsent(
+                        line.product.getId(), k -> new java.util.HashSet<>());
+                for (String serial : line.serials) {
+                    if (!seen.add(serial)) {
+                        throw new IllegalArgumentException(
+                                "Duplicate serial for " + line.product.getName() + ": " + serial);
+                    }
+                }
+            }
+        }
+        return lines.stream().map(line -> {
+            Product product = line.product;
+            BigDecimal productTotal = totalsByProduct.getOrDefault(product.getId(), line.qty);
+            BigDecimal unitPrice = BulkPricing.effectiveUnitPrice(
+                    product.getSellingPrice(), product.getBulkTiersJson(),
+                    product.getBulkMinQty(), product.getBulkPrice(), productTotal);
+            return OrderItem.builder()
+                    .product(product)
+                    .quantity(line.qty)
+                    .unitPrice(unitPrice)
+                    .price(unitPrice.multiply(line.qty).setScale(2, RoundingMode.HALF_UP))
+                    .modifiersJson(line.modifiers.isEmpty() ? null : JsonLists.toJson(line.modifiers))
+                    .kitchenNote(line.kitchenNote)
+                    .dosage(line.dosage)
+                    .serialsJson(line.serials.isEmpty() ? null : JsonLists.toJson(line.serials))
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    /** Validated line carried from the request DTO into a priced entity. */
+    private static final class ResolvedLine {
+        private final Product product;
+        private final BigDecimal qty;
+        private final List<String> modifiers;
+        private final String kitchenNote;
+        private final String dosage;
+        private final List<String> serials;
+
+        private ResolvedLine(Product product, BigDecimal qty, List<String> modifiers,
+                             String kitchenNote, String dosage, List<String> serials) {
+            this.product = product;
+            this.qty = qty;
+            this.modifiers = modifiers;
+            this.kitchenNote = kitchenNote;
+            this.dosage = dosage;
+            this.serials = serials;
+        }
+    }
+
+    private static List<String> cleanStrings(List<String> values) {
+        if (values == null) return new ArrayList<>();
+        return values.stream()
+                .filter(v -> v != null && !v.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** Accepts DINE_IN / TAKEAWAY / DELIVERY (case-insensitive) or null. */
+    private static String normalizeOrderType(String orderType) {
+        if (orderType == null || orderType.isBlank()) return null;
+        String normalized = orderType.trim().toUpperCase();
+        if (!normalized.equals("DINE_IN") && !normalized.equals("TAKEAWAY") && !normalized.equals("DELIVERY")) {
+            throw new IllegalArgumentException("Unknown order type: " + orderType);
+        }
+        return normalized;
+    }
+
+    /** EMI tenure travels with the order for records; the gateway still charges in full. */
+    private static Integer validateEmiMonths(Integer emiMonths) {
+        if (emiMonths == null) return null;
+        if (emiMonths <= 0) throw new IllegalArgumentException("EMI tenure must be positive");
+        return emiMonths;
     }
 
     private Order findOwnedHeldOrder(Long id) throws Exception {

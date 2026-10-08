@@ -12,6 +12,7 @@ import com.springboot.POS.repository.RefundRepository;
 import com.springboot.POS.service.InventoryService;
 import com.springboot.POS.service.RefundService;
 import com.springboot.POS.service.UserService;
+import com.springboot.POS.util.OrderTotals;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -68,13 +69,14 @@ public class RefundServiceImpl implements RefundService {
 
         Refund savedRefund = refundRepository.save(createdRefund);
         
-        // Restore inventory for all items in the order (full refund)
+        // Restore inventory for all items in the order (full refund).
+        // Mirrors order creation, which deducts the ceiling of fractional sales.
         for (OrderItem item : order.getItems()) {
             try {
                 inventoryService.addStock(
                     item.getProduct().getId(), 
                     branch.getId(), 
-                    item.getQuantity()
+                    OrderTotals.stockUnits(item.getQuantity())
                 );
             } catch (Exception e) {
                 // Log error but don't fail the refund

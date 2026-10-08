@@ -176,18 +176,43 @@ public class InventoryController {
                 .filter(i -> i.getProduct() != null && !Boolean.TRUE.equals(i.getProduct().getDeleted()))
                 .map(i -> {
                     java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
-                    m.put("id", i.getProduct().getId());
-                    m.put("name", i.getProduct().getName());
-                    m.put("sku", i.getProduct().getSku());
-                    m.put("sellingPrice", i.getProduct().getSellingPrice());
-                    m.put("mrp", i.getProduct().getMrp());
-                    m.put("brand", i.getProduct().getBrand());
-                    m.put("image", i.getProduct().getImage());
-                    m.put("categoryName", i.getProduct().getCategory() != null
-                            ? i.getProduct().getCategory().getName() : null);
-                    m.put("description", i.getProduct().getDescription());
+                    com.springboot.POS.modal.Product p = i.getProduct();
+                    m.put("id", p.getId());
+                    m.put("name", p.getName());
+                    m.put("sku", p.getSku());
+                    m.put("sellingPrice", p.getSellingPrice());
+                    m.put("mrp", p.getMrp());
+                    m.put("brand", p.getBrand());
+                    m.put("image", p.getImage());
+                    m.put("categoryName", p.getCategory() != null
+                            ? p.getCategory().getName() : null);
+                    m.put("description", p.getDescription());
                     m.put("stock", i.getQuantity());
                     m.put("unitPrice", i.getUnitPrice());
+                    // Vertical attributes for the terminal (badges, guards, pricing).
+                    m.put("expiryDate", p.getExpiryDate() != null ? p.getExpiryDate().toString() : null);
+                    m.put("batchNumber", p.getBatchNumber());
+                    m.put("prescriptionRequired", p.getPrescriptionRequired());
+                    m.put("isControlled", p.getControlledSubstance());
+                    m.put("dosage", p.getDosage());
+                    m.put("unit", p.getUnit());
+                    m.put("weight", p.getWeight());
+                    m.put("weightStep", p.getWeightStep());
+                    m.put("moq", p.getMoq());
+                    m.put("requiresSerial", p.getRequiresSerial());
+                    m.put("warrantyMonths", p.getWarrantyMonths());
+                    m.put("sizeVariant", p.getSizeVariant());
+                    m.put("colorVariant", p.getColorVariant());
+                    m.put("variants", com.springboot.POS.util.JsonLists.mapList(p.getVariantsJson()));
+                    m.put("bulkMinQty", p.getBulkMinQty());
+                    m.put("bulkPrice", p.getBulkPrice());
+                    m.put("bulkTiers", com.springboot.POS.util.JsonLists.mapList(p.getBulkTiersJson()));
+                    m.put("preparationTime", p.getPreparationTime());
+                    m.put("kitchenStation", p.getKitchenStation());
+                    m.put("modifiers", com.springboot.POS.util.JsonLists.stringList(p.getModifiersJson()));
+                    m.put("isVeg", p.getIsVeg());
+                    m.put("careInstructions", p.getCareInstructions());
+                    m.put("guaranteeDays", p.getGuaranteeDays());
                     return m;
                 })
                 .filter(m -> query.isEmpty()

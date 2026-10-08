@@ -5,6 +5,8 @@ import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.ProductDTO;
 import com.springboot.POS.repository.*;
 import com.springboot.POS.service.ProductService;
+import com.springboot.POS.util.JsonLists;
+import com.springboot.POS.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -87,6 +89,76 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (productDTO.getBrand() != null) {
                         product.setBrand(productDTO.getBrand());
+                }
+                // Vertical attributes: null in a PATCH means "leave unchanged".
+                if (productDTO.getExpiryDate() != null) {
+                        product.setExpiryDate(productDTO.getExpiryDate());
+                }
+                if (productDTO.getBatchNumber() != null) {
+                        product.setBatchNumber(productDTO.getBatchNumber());
+                }
+                if (productDTO.getPrescriptionRequired() != null) {
+                        product.setPrescriptionRequired(productDTO.getPrescriptionRequired());
+                }
+                if (productDTO.getControlledSubstance() != null) {
+                        product.setControlledSubstance(productDTO.getControlledSubstance());
+                }
+                if (productDTO.getDosage() != null) {
+                        product.setDosage(productDTO.getDosage());
+                }
+                if (productDTO.getUnit() != null) {
+                        product.setUnit(productDTO.getUnit());
+                }
+                if (productDTO.getWeight() != null) {
+                        product.setWeight(productDTO.getWeight());
+                }
+                if (productDTO.getWeightStep() != null) {
+                        product.setWeightStep(productDTO.getWeightStep());
+                }
+                if (productDTO.getMoq() != null) {
+                        product.setMoq(productDTO.getMoq());
+                }
+                if (productDTO.getRequiresSerial() != null) {
+                        product.setRequiresSerial(productDTO.getRequiresSerial());
+                }
+                if (productDTO.getWarrantyMonths() != null) {
+                        product.setWarrantyMonths(productDTO.getWarrantyMonths());
+                }
+                if (productDTO.getSizeVariant() != null) {
+                        product.setSizeVariant(productDTO.getSizeVariant());
+                }
+                if (productDTO.getColorVariant() != null) {
+                        product.setColorVariant(productDTO.getColorVariant());
+                }
+                if (productDTO.getVariants() != null) {
+                        product.setVariantsJson(JsonLists.toJson(productDTO.getVariants()));
+                }
+                if (productDTO.getBulkMinQty() != null) {
+                        product.setBulkMinQty(productDTO.getBulkMinQty());
+                }
+                if (productDTO.getBulkPrice() != null) {
+                        product.setBulkPrice(productDTO.getBulkPrice());
+                }
+                if (productDTO.getBulkTiers() != null) {
+                        product.setBulkTiersJson(JsonLists.toJson(productDTO.getBulkTiers()));
+                }
+                if (productDTO.getPreparationTime() != null) {
+                        product.setPreparationTime(productDTO.getPreparationTime());
+                }
+                if (productDTO.getKitchenStation() != null) {
+                        product.setKitchenStation(productDTO.getKitchenStation());
+                }
+                if (productDTO.getModifiers() != null) {
+                        product.setModifiersJson(JsonLists.toJson(productDTO.getModifiers()));
+                }
+                if (productDTO.getIsVeg() != null) {
+                        product.setIsVeg(productDTO.getIsVeg());
+                }
+                if (productDTO.getCareInstructions() != null) {
+                        product.setCareInstructions(productDTO.getCareInstructions());
+                }
+                if (productDTO.getGuaranteeDays() != null) {
+                        product.setGuaranteeDays(productDTO.getGuaranteeDays());
                 }
                 product.setUpdatedAt(LocalDateTime.now());
 

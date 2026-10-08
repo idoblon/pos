@@ -47,4 +47,22 @@ public final class OrderTotals {
         BigDecimal total = subtotal.add(taxAmount).subtract(discountAmount);
         return total.signum() < 0 ? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP) : total;
     }
+
+    /**
+     * Integer stock units to move for a billed quantity. Inventory tracks whole
+     * units, so fractional sales (e.g. 0.5 kg) deduct the ceiling — never
+     * overselling stock.
+     *
+     * @throws IllegalArgumentException for null, zero, negative or huge quantities
+     */
+    public static int stockUnits(BigDecimal quantity) {
+        if (quantity == null || quantity.signum() <= 0) {
+            throw new IllegalArgumentException("Order item quantity must be greater than zero");
+        }
+        try {
+            return quantity.setScale(0, RoundingMode.CEILING).intValueExact();
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException("Order item quantity is too large", e);
+        }
+    }
 }

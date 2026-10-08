@@ -112,7 +112,7 @@ public class AnalyticsController {
                 Long pid = item.getProduct().getId();
                 productNames.put(pid, item.getProduct().getName());
                 productStats.computeIfAbsent(pid, k -> new double[]{0, 0});
-                productStats.get(pid)[0] += item.getQuantity();
+                productStats.get(pid)[0] += item.getQuantity().doubleValue();
                 productStats.get(pid)[1] += item.getPrice().doubleValue();
             }
         }

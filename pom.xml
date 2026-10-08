@@ -17,6 +17,9 @@
 
 	<properties>
 		<java.version>17</java.version>
+		<!-- Newer Lombok for recent JDKs (project JDK here is newer than 17);
+		     1.18.46 is already in the local Maven cache. -->
+		<lombok.version>1.18.46</lombok.version>
 	</properties>
 
 	<dependencies>

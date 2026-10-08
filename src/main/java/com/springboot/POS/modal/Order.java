@@ -61,6 +61,25 @@ public class Order {
     // CASH only: raw amount handed over by customer
     private BigDecimal amountReceived;
 
+    /** Restaurant: DINE_IN, TAKEAWAY or DELIVERY. */
+    @Column(length = 16)
+    private String orderType;
+
+    /** Restaurant table label (e.g. "T4"). */
+    @Column(length = 32)
+    private String tableNumber;
+
+    /** Free-text note for the kitchen (KOT). */
+    @Column(length = 500)
+    private String kitchenNote;
+
+    /** Pharmacy: pharmacist sign-off on attached prescription. */
+    @Builder.Default
+    private Boolean prescriptionVerified = false;
+
+    /** Electronics: EMI tenure in months (3/6/12), null = full payment. */
+    private Integer emiMonths;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
@@ -70,6 +89,7 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         if (status == null) status = OrderStatus.PENDING;
+        if (prescriptionVerified == null) prescriptionVerified = false;
     }
 
 }
