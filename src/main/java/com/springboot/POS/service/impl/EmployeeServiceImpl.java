@@ -10,6 +10,7 @@ import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.EmployeeService;
+import com.springboot.POS.service.SubscriptionLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final SubscriptionLimitService limitService;
 
     @Override
     public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
@@ -36,6 +38,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Store store = storeRepository.findById(storeId).orElseThrow(
                 () -> new Exception("Store not found")
         );
+        enforceUserLimit(store);
         Branch branch = null;
 
         if(employee.getRole()==UserRole.ROLE_BRANCH_MANAGER){
@@ -71,6 +74,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         Branch branch = branchRepository.findById(branchId).orElseThrow(
                 () -> new Exception("branch not found")
         );
+        enforceUserLimit(branch.getStore());
 
        if(employee.getRole()==UserRole.ROLE_BRANCH_CASHIER ||
        employee.getRole()==UserRole.ROLE_BRANCH_MANAGER){
@@ -82,6 +86,17 @@ public class EmployeeServiceImpl implements EmployeeService {
            return UserMapper.toDTO(userRepository.save(user));
        }
         throw new Exception("branch role not supported");
+    }
+
+    /**
+     * Subscription guard: BASIC 10, PROFESSIONAL 50, ENTERPRISE 200 users per
+     * store (trial stores run on BASIC). Counts every live login on the store,
+     * including the store admin — deleted accounts free their seat.
+     * UserException is unchecked, so it propagates through the
+     * {@code throws Exception} signatures below untouched.
+     */
+    private void enforceUserLimit(Store store) {
+        limitService.requireUserCapacity(store);
     }
 
 

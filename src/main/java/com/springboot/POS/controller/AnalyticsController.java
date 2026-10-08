@@ -9,7 +9,9 @@ import com.springboot.POS.modal.User;
 import com.springboot.POS.repository.OrderRepository;
 import com.springboot.POS.repository.RefundRepository;
 import com.springboot.POS.repository.ShiftReportRepository;
+import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
+import com.springboot.POS.service.SubscriptionLimitService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,14 @@ public class AnalyticsController {
     private final ShiftReportRepository shiftReportRepository;
     private final UserRepository userRepository;
     private final OwnershipGuard ownershipGuard;
+    private final StoreRepository storeRepository;
+    private final SubscriptionLimitService limitService;
+
+    /** Premium analytics gate (PROFESSIONAL+): core daily/branch reporting stays open on all plans. */
+    private void requireAdvancedAnalytics(Long storeId) {
+        limitService.requireFeature(
+                storeRepository.findById(storeId).orElse(null), "advancedAnalytics");
+    }
 
     @GetMapping("/store/{storeId}")
     public ResponseEntity<Map<String, Object>> getStoreAnalytics(
@@ -196,6 +206,7 @@ public class AnalyticsController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
+        requireAdvancedAnalytics(storeId);
 
         List<Order> orders = orderRepository.findByStoreId(storeId);
         Map<Integer, Long> hourCounts = orders.stream()
@@ -218,6 +229,7 @@ public class AnalyticsController {
             @RequestHeader("Authorization") String jwt) throws Exception {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, storeId);
+        requireAdvancedAnalytics(storeId);
 
         List<User> employees = userRepository.findByStore_IdAndDeletedFalse(storeId);
         List<Order> allOrders = orderRepository.findByStoreId(storeId);

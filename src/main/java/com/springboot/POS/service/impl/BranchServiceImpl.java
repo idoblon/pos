@@ -10,6 +10,7 @@ import com.springboot.POS.repository.BranchRepository;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.BranchService;
+import com.springboot.POS.service.SubscriptionLimitService;
 import com.springboot.POS.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,18 +26,24 @@ public class BranchServiceImpl implements BranchService {
     private final BranchRepository branchRepository;
     private final StoreRepository storeRepository;
     private final UserService userService;
+    private final SubscriptionLimitService limitService;
 
 
-    public BranchServiceImpl(BranchRepository branchRepository, StoreRepository storeRepository, UserRepository userRepository, UserService userService) {
+    public BranchServiceImpl(BranchRepository branchRepository, StoreRepository storeRepository, UserRepository userRepository, UserService userService, SubscriptionLimitService limitService) {
         this.branchRepository = branchRepository;
         this.storeRepository = storeRepository;
         this.userService = userService;
+        this.limitService = limitService;
     }
 
     @Override
     public BranchDTO createBranch(BranchDTO branchDTO) throws UserException {
         User currentUser = userService.getCurrentUser();
         Store store = storeRepository.findByStoreAdminId(currentUser.getId());
+
+        // Subscription guard: BASIC 3, PROFESSIONAL 10, ENTERPRISE 25 branches
+        // per store (trial stores run on BASIC). Closed branches free a slot.
+        limitService.requireBranchCapacity(store);
 
         Branch branch = BranchMapper.toEntity(branchDTO, store);
         Branch savedBranch = branchRepository.save(branch);

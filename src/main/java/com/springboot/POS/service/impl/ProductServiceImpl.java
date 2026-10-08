@@ -5,6 +5,7 @@ import com.springboot.POS.modal.*;
 import com.springboot.POS.payload.dto.ProductDTO;
 import com.springboot.POS.repository.*;
 import com.springboot.POS.service.ProductService;
+import com.springboot.POS.service.SubscriptionLimitService;
 import com.springboot.POS.util.JsonLists;
 import com.springboot.POS.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class ProductServiceImpl implements ProductService {
         private final CategoryRepository categoryRepository;
         private final BranchRepository branchRepository;
         private final InventoryRepository inventoryRepository;
+        private final SubscriptionLimitService limitService;
 
         @Override
         public ProductDTO createProduct(ProductDTO productDTO, User user) throws Exception {
@@ -36,7 +38,12 @@ public class ProductServiceImpl implements ProductService {
                                                 () -> new Exception("Store not found"));
 
                 Category category = categoryRepository.findById(productDTO.getCategoryId()).orElseThrow(
-                                () -> new Exception("Category not Found"));
+                                                () -> new Exception("Category not Found"));
+
+                // Storage quota: product images are the metered media.
+                if (productDTO.getImage() != null && !productDTO.getImage().isEmpty()) {
+                        limitService.requireStorageFor(store, productDTO.getImage().length());
+                }
 
                 Product product = ProductMapper.toEntity(productDTO, store, category);
                 Product savedProduct = productRepository.save(product);
@@ -79,6 +86,12 @@ public class ProductServiceImpl implements ProductService {
                 }
                 if (productDTO.getImage() != null && !productDTO.getImage().isEmpty()) {
                         log.debug("Updating image, length: {}", productDTO.getImage().length());
+                        long oldBytes = product.getImage() != null ? product.getImage().length() : 0L;
+                        Store imageStore = product.getStore();
+                        if (imageStore != null) {
+                                limitService.requireStorageForReplacement(
+                                                imageStore, oldBytes, productDTO.getImage().length());
+                        }
                         product.setImage(productDTO.getImage());
                 }
                 if (productDTO.getMrp() != null) {

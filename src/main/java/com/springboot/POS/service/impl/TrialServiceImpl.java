@@ -42,6 +42,7 @@ public class TrialServiceImpl implements TrialService {
     private final JwtProvider jwtProvider;
     private final AdminAuditService auditService;
     private final EmailService emailService;
+    private final com.springboot.POS.service.SubscriptionLimitService limitService;
 
     @Override
     @Transactional
@@ -61,6 +62,9 @@ public class TrialServiceImpl implements TrialService {
         if (userDto.getStoreName() == null || userDto.getStoreName().isBlank()) {
             throw new UserException("Store name is required for a free trial");
         }
+        // Trials run on BASIC (1 store per owner email); owners needing more
+        // stores subscribe to Enterprise first.
+        limitService.requireStoreCreationAllowed(userDto.getEmail(), "BASIC");
 
         LocalDateTime now = LocalDateTime.now();
         // NOTE: UserDTO.storeType carries the store category (RETAIL, ...), not the

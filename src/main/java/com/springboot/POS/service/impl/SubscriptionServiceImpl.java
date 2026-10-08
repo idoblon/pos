@@ -11,6 +11,7 @@ import com.springboot.POS.payload.dto.SubscriptionStatsDTO;
 import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.SubscriptionNotificationRepository;
 import com.springboot.POS.repository.UserRepository;
+import com.springboot.POS.service.SubscriptionPlanCatalog;
 import com.springboot.POS.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,11 +32,14 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
 
-    private static final Map<String, Double> SUBSCRIPTION_PRICES = Map.of(
-        "BASIC", 3500.0,
-        "PROFESSIONAL", 7000.0,
-        "ENTERPRISE", 10000.0
-    );
+    // Prices live in SubscriptionPlanCatalog (single source of truth).
+    private static double planPrice(String plan) {
+        return SubscriptionPlanCatalog.priceOf(plan);
+    }
+
+    private static boolean isKnownPlan(String plan) {
+        return plan != null && SubscriptionPlanCatalog.all().containsKey(plan.toUpperCase());
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -94,7 +98,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         Store store = storeRepository.findById(storeId)
             .orElseThrow(() -> new RuntimeException("Store not found"));
 
-        if (!SUBSCRIPTION_PRICES.containsKey(newPlan)) {
+        if (!isKnownPlan(newPlan)) {
             throw new RuntimeException("Invalid subscription plan: " + newPlan);
         }
 
@@ -265,7 +269,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         double totalRevenue = stores.stream()
             .filter(s -> s.getSubscriptionPlan() != null)
-            .mapToDouble(s -> SUBSCRIPTION_PRICES.getOrDefault(s.getSubscriptionPlan(), 0.0))
+            .mapToDouble(s -> planPrice(s.getSubscriptionPlan()))
             .sum();
 
         return SubscriptionStatsDTO.builder()
@@ -359,9 +363,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         long daysRemaining = store.getSubscriptionExpiry() != null ?
             ChronoUnit.DAYS.between(now, store.getSubscriptionExpiry()) : 0;
 
-        Double annualPrice = SUBSCRIPTION_PRICES.getOrDefault(
-            store.getSubscriptionPlan(), SUBSCRIPTION_PRICES.get("BASIC")
-        );
+        Double annualPrice = planPrice(store.getSubscriptionPlan());
 
         return SubscriptionDTO.builder()
             .storeId(store.getId())
@@ -375,6 +377,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             .lastSubscriptionRenewal(store.getLastSubscriptionRenewal())
             .annualPrice(annualPrice)
             .monthlyPrice(annualPrice / 12)
+            .supportTier(com.springboot.POS.service.SubscriptionPlanCatalog.supportTierOf(store.getSubscriptionPlan()))
             .build();
     }
 

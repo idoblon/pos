@@ -26,6 +26,7 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.springboot.POS.service.SubscriptionLimitService limitService;
 
     @Value("${app.admin.email:posproofficial@gmail.com}")
     private String adminEmail;
@@ -39,6 +40,10 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new Exception("An account with this email already exists.");
         }
+        // Stores-per-owner cap: BASIC/PROFESSIONAL allow 1 store (by owner
+        // email), ENTERPRISE is unlimited. Re-checked at approval time.
+        limitService.requireStoreCreationAllowed(
+                dto.getEmail(), dto.getSubscriptionPlan() != null ? dto.getSubscriptionPlan() : "BASIC");
 
         StoreRegistrationRequest request = new StoreRegistrationRequest();
         request.setOwnerName(dto.getOwnerName());
@@ -91,6 +96,10 @@ public class StoreRegistrationServiceImpl implements StoreRegistrationService {
         if (!"PENDING".equals(request.getStatus())) {
             throw new Exception("Request is already " + request.getStatus());
         }
+
+        // Re-check the stores-per-owner cap: the owner may have added a store
+        // while this request was waiting for approval.
+        limitService.requireStoreCreationAllowed(request.getEmail(), request.getSubscriptionPlan());
 
         // 1. Create Store
         Store store = new Store();

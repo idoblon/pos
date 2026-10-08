@@ -20,4 +20,6 @@ public class SubscriptionDTO {
     private LocalDateTime lastSubscriptionRenewal;
     private Double annualPrice;
     private Double monthlyPrice;
+    /** Support channel for the plan: Email, Priority, 24/7 Dedicated. */
+    private String supportTier;
 }

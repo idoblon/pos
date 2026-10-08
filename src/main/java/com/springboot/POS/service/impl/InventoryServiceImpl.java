@@ -28,6 +28,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryRepository inventoryRepository;
     private final StockMovementService stockMovementService;
     private final com.springboot.POS.repository.StoreRepository storeRepository;
+    private final com.springboot.POS.service.SubscriptionLimitService limitService;
 
 
     @Override
@@ -254,6 +255,10 @@ public class InventoryServiceImpl implements InventoryService {
                 || !warehouseStoreId.equals(dest.getStore().getId())) {
             throw new IllegalArgumentException("Warehouse and branch belong to different stores");
         }
+        // Subscription gate: manual warehouse distribution is a
+        // PROFESSIONAL+ feature ("Warehouse + Restock Transfers").
+        // Request-based restock fulfillment stays open on all plans.
+        limitService.requireFeature(warehouse.getStore(), "warehouseTransfers");
         if (warehouse.getQuantity() < quantity) {
             throw new Exception("Insufficient warehouse stock: available=" + warehouse.getQuantity()
                     + ", required=" + quantity);

@@ -9,9 +9,12 @@ import com.springboot.POS.modal.User;
 import com.springboot.POS.payload.dto.StoreDTO;
 import com.springboot.POS.payload.response.ApiResponse;
 import com.springboot.POS.repository.BranchRepository;
+import com.springboot.POS.repository.StoreRepository;
 import com.springboot.POS.repository.UserRepository;
 import com.springboot.POS.service.AdminAuditService;
 import com.springboot.POS.service.StoreService;
+import com.springboot.POS.service.SubscriptionLimitService;
+import com.springboot.POS.service.SubscriptionPlanCatalog;
 import com.springboot.POS.service.TrialService;
 import com.springboot.POS.service.UserService;
 import com.springboot.POS.service.impl.OwnershipGuard;
@@ -34,6 +37,8 @@ public class StoreController {
     private final AdminAuditService auditService;
     private final BranchRepository branchRepository;
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
+    private final SubscriptionLimitService limitService;
 
     /**
      * Admin stores overview — one call returning each store with branch and
@@ -145,6 +150,30 @@ public class StoreController {
         User user = userService.getUserFromJwtToken(jwt);
         ownershipGuard.requireStoreAccess(user, id);
         return ResponseEntity.ok(storeService.getStoreById(id));
+    }
+
+    /**
+     * Live storage usage for the plan-quota meter.
+     * Contract: { usedBytes, usedGB, quotaGB, plan, source: "live" }.
+     */
+    @GetMapping("/{id}/storage-usage")
+    public ResponseEntity<java.util.Map<String, Object>> getStorageUsage(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        User user = userService.getUserFromJwtToken(jwt);
+        ownershipGuard.requireStoreAccess(user, id);
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new UserException("Store not found"));
+        long usedBytes = limitService.storageUsageBytes(id);
+        int quotaGB = SubscriptionPlanCatalog.storageGBOf(store.getSubscriptionPlan());
+        double usedGB = Math.round((usedBytes / (1024.0 * 1024.0 * 1024.0)) * 10.0) / 10.0;
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("usedBytes", usedBytes);
+        body.put("usedGB", usedGB);
+        body.put("quotaGB", quotaGB);
+        body.put("plan", store.getSubscriptionPlan());
+        body.put("source", "live");
+        return ResponseEntity.ok(body);
     }
 
     @DeleteMapping("/{id}")

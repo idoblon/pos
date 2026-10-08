@@ -34,5 +34,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "else 3 end"
     )
     List<Product> searchByKeyword(@Param("storeId") Long storeId,
-                                  @Param("query") String keyword);
+                    @Param("query") String keyword);
+
+    /**
+     * Media bytes held by a store's live catalog (base64 images are ASCII, so
+     * character length ≈ byte size). Backs the storage-quota guard.
+     */
+    @Query(value = "SELECT COALESCE(SUM(OCTET_LENGTH(image)), 0) FROM product "
+            + "WHERE store_id = :storeId AND (deleted = false OR deleted IS NULL)",
+            nativeQuery = true)
+    Long sumImageBytesByStoreId(@Param("storeId") Long storeId);
 }

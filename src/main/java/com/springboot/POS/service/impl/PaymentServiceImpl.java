@@ -71,9 +71,9 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setTransactionId(generateTransactionId());
         payment.setPaymentStatus("PENDING");
         
-        // Set subscription period (1 month)
+        // Set subscription period (1 year)
         payment.setSubscriptionStartDate(LocalDateTime.now());
-        payment.setSubscriptionEndDate(LocalDateTime.now().plusMonths(1));
+        payment.setSubscriptionEndDate(LocalDateTime.now().plusYears(1));
         payment.setIsRecurring(true);
 
         SubscriptionPayment savedPayment = paymentRepository.save(payment);
@@ -130,7 +130,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Double getSubscriptionAmount(String subscriptionPlan) {
-        return SUBSCRIPTION_PRICES.getOrDefault(subscriptionPlan, 3500.0);
+        return SUBSCRIPTION_PRICES.getOrDefault(subscriptionPlan, 75000.0);
     }
 
     @Override
@@ -188,7 +188,7 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.setCurrency("NPR");
                 payment.setIsRecurring(true);
                 payment.setSubscriptionStartDate(LocalDateTime.now());
-                payment.setSubscriptionEndDate(LocalDateTime.now().plusMonths(1));
+                payment.setSubscriptionEndDate(LocalDateTime.now().plusYears(1));
             }
             
             // Validate payment is not already completed
